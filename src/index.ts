@@ -1,5 +1,5 @@
 ﻿import cors from "cors";
-import express from "express";
+import express, { NextFunction, Request, Response } from "express";
 import http from "http";
 import path from "path";
 import { Server as SocketIOServer } from "socket.io";
@@ -16,6 +16,7 @@ import { aiWriterPipelineTracker } from "./modules/ai_writer_tistory/pipelineTra
 import { moduleRegistry } from "./modules/registry";
 import { createAiWriterPipelineRouter } from "./routes/aiWriterPipeline.route";
 import { createAssistantRouter } from "./routes/assistant.route";
+import { createConfigRouter } from "./routes/config.route";
 import { createModuleRouter } from "./routes/module.route";
 import { createN8nCallbackRouter } from "./routes/n8nCallback.route";
 import { createRagRouter } from "./routes/rag.route";
@@ -96,11 +97,186 @@ const emitMonitoringEvent = (eventName: string, payload: Record<string, unknown>
   });
 };
 
+type HttpErrorRecord = {
+  requestId?: number;
+  method: string;
+  path: string;
+  status: number;
+  message: string;
+  detail?: string;
+  stack?: string;
+  requestBody: string;
+  query: Record<string, unknown>;
+  contentType: string;
+  userAgent: string;
+  timestamp: string;
+  origin: string;
+};
+
+const httpErrorHistory: HttpErrorRecord[] = [];
+const MAX_HTTP_ERROR_HISTORY = 120;
+const SENSITIVE_REQUEST_KEYS = new Set([
+  "telegramBotToken",
+  "openAiApiKey",
+  "googleAiStudioApiKey",
+  "notionApiKey",
+  "notionParentPageId",
+  "OPENAI_API_KEY",
+  "GOOGLE_AI_STUDIO_API_KEY",
+  "NOTION_API_KEY",
+  "NOTION_PARENT_PAGE_ID",
+  "TELEGRAM_BOT_TOKEN",
+]);
+
+const sanitizeForLog = (value: unknown): string => {
+  if (typeof value === "string") {
+    return value;
+  }
+
+  if (value === undefined || value === null) {
+    return "";
+  }
+
+  try {
+    return JSON.stringify(value);
+  } catch {
+    return String(value);
+  }
+};
+
+const sanitizeLogBody = (value: unknown): string => {
+  if (value === undefined || value === null) {
+    return "";
+  }
+
+  if (typeof value === "string") {
+    return value.length > 600 ? `${value.slice(0, 600)}...` : value;
+  }
+
+  if (Array.isArray(value)) {
+    return `[${value.map((item) => sanitizeLogBody(item)).join(", ")}]`;
+  }
+
+  if (typeof value === "object") {
+    const entries = Object.entries(value).map(([key, raw]) => {
+      if (SENSITIVE_REQUEST_KEYS.has(key)) {
+        return `${key}:[redacted]`;
+      }
+      const sanitizedValue = typeof raw === "string" ? raw : sanitizeForLog(raw);
+      return `${key}:${sanitizedValue}`;
+    });
+    return `{${entries.join(", ")}}`;
+  }
+
+  return sanitizeForLog(value);
+};
+
+const summarizeRequestBody = (req: { body?: unknown }): string => {
+  const summary = sanitizeLogBody(req.body);
+  if (summary.length <= 1400) {
+    return summary;
+  }
+
+  return `${summary.slice(0, 1400)}...`;
+};
+
+const pushHttpErrorRecord = (record: HttpErrorRecord): void => {
+  httpErrorHistory.push(record);
+  if (httpErrorHistory.length > MAX_HTTP_ERROR_HISTORY) {
+    httpErrorHistory.shift();
+  }
+};
+
+const getStatusCodeFromError = (error: unknown): number => {
+  if (error && typeof error === "object") {
+    const withStatusCode = error as { status?: unknown; statusCode?: unknown };
+
+    if (typeof withStatusCode.status === "number") {
+      return withStatusCode.status;
+    }
+
+    if (typeof withStatusCode.statusCode === "number") {
+      return withStatusCode.statusCode;
+    }
+  }
+
+  return 500;
+};
+
+const sanitizeClientErrorText = (message: string): string => {
+  const trimmed = message.trim();
+  return trimmed === "Bad Request" ? "요청 형식이 올바르지 않습니다." : trimmed || "요청 처리 중 오류가 발생했습니다.";
+};
+
+const buildClientErrorDetail = (status: number): string => {
+  if (status === 400) {
+    return "요청 형식/파라미터를 확인해 주세요.";
+  }
+
+  if (status === 401) {
+    return "인증이 필요하거나 토큰이 유효하지 않습니다.";
+  }
+
+  if (status === 403) {
+    return "권한이 없습니다.";
+  }
+
+  if (status === 404) {
+    return "요청한 리소스를 찾을 수 없습니다.";
+  }
+
+  return "클라이언트 요청을 처리할 수 없습니다.";
+};
+
+let requestSequence = 0;
+app.use((req, res, next) => {
+  const requestId = ++requestSequence;
+  const startedAt = Date.now();
+  (req as { requestId?: number }).requestId = requestId;
+
+  logger.info("HTTP 요청 수신", {
+    requestId,
+    method: req.method,
+    path: req.originalUrl,
+    contentType: req.headers["content-type"],
+    userAgent: req.headers["user-agent"],
+    ip: req.ip,
+  });
+
+  res.on("finish", () => {
+    const durationMs = Date.now() - startedAt;
+    const payload = {
+      requestId,
+      method: req.method,
+      path: req.originalUrl,
+      statusCode: res.statusCode,
+      durationMs,
+    };
+
+    logger.info("HTTP 요청 완료", payload);
+    emitMonitoringEvent("http:request", payload);
+  });
+
+  next();
+});
+
 app.get("/health", (_req, res) => {
   res.status(200).json({
     ok: true,
     service: "AI_BISEO",
     now: new Date().toISOString(),
+  });
+});
+
+app.get("/api/diagnostics/http-errors", (_req, res) => {
+  const payload = httpErrorHistory.slice(-MAX_HTTP_ERROR_HISTORY).map((entry) => ({ ...entry }));
+  res.status(200).json({
+    ok: true,
+    item: {
+      count: payload.length,
+      max: MAX_HTTP_ERROR_HISTORY,
+      items: payload,
+    },
   });
 });
 
@@ -129,9 +305,18 @@ const bootstrap = async (): Promise<void> => {
   const assistantRouter = createAssistantRouter({ controller: assistantController });
   app.use("/api/assistant", assistantRouter);
 
+  const configRouter = createConfigRouter();
+  app.use("/api/settings", configRouter);
+
   if (env.DASHBOARD_SERVE_MODE === "single") {
     const dashboardDir = path.resolve(process.cwd(), env.DASHBOARD_STATIC_DIR);
     app.use("/dashboard", express.static(dashboardDir));
+    app.get("/dashboard", (_req, res) => {
+      res.sendFile(path.join(dashboardDir, "index.html"));
+    });
+    app.get("/dashboard/*", (_req, res) => {
+      res.sendFile(path.join(dashboardDir, "index.html"));
+    });
     logger.info("대시보드 정적 리소스를 단일 서버 모드로 제공합니다.", {
       route: "/dashboard",
       directory: dashboardDir,
@@ -217,6 +402,67 @@ const bootstrap = async (): Promise<void> => {
     });
   });
 
+  app.use((error: unknown, req: Request, res: Response, next: NextFunction) => {
+    const statusCode = getStatusCodeFromError(error);
+    const status = statusCode >= 400 && statusCode < 600 ? statusCode : 500;
+    const baseMessage = error instanceof Error ? error.message : "요청 처리 중 알 수 없는 오류가 발생했습니다.";
+    const message = sanitizeClientErrorText(baseMessage);
+    const requestId = (req as { requestId?: number }).requestId;
+
+    logger.error("요청 처리 중 오류가 발생했습니다.", {
+      method: req.method,
+      path: req.originalUrl,
+      status,
+      message,
+      requestId,
+      requestBodyType: typeof req.body,
+    });
+
+    const record: HttpErrorRecord = {
+      requestId,
+      method: req.method,
+      path: req.originalUrl,
+      status,
+      message,
+      detail: status < 500 ? buildClientErrorDetail(status) : "Internal Server Error",
+      stack: error instanceof Error ? error.stack : undefined,
+      requestBody: summarizeRequestBody(req),
+      query: req.query as Record<string, unknown>,
+      contentType: req.headers["content-type"]?.toString() ?? "",
+      userAgent: req.headers["user-agent"]?.toString() ?? "",
+      timestamp: new Date().toISOString(),
+      origin: req.ip ?? "",
+    };
+
+    pushHttpErrorRecord(record);
+
+    emitMonitoringEvent("http:error", {
+      requestId,
+      method: req.method,
+      path: req.originalUrl,
+      status,
+      message,
+      requestBodyType: typeof req.body,
+    });
+
+    if (res.headersSent) {
+      next(error as Error);
+      return;
+    }
+
+    const detail = status >= 500 ? "Internal Server Error" : buildClientErrorDetail(status);
+
+    res.status(status).json({
+      ok: false,
+      error: {
+        message,
+        detail,
+        statusCode: status,
+        path: req.originalUrl,
+        requestId,
+      },
+    });
+  });
   let isShuttingDown = false;
 
   const closeHttpServer = async (): Promise<void> => {
@@ -324,3 +570,20 @@ void bootstrap().catch((error) => {
   });
   process.exitCode = 1;
 });
+
+process.on("uncaughtException", (error) => {
+  logger.error("처리되지 않은 예외가 발생했습니다.", {
+    message: error.message,
+    stack: error.stack,
+  });
+});
+
+process.on("unhandledRejection", (reason) => {
+  logger.error("처리되지 않은 Promise rejection이 발생했습니다.", {
+    reason: reason instanceof Error ? reason.message : String(reason),
+  });
+});
+
+
+
+

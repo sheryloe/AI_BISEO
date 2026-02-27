@@ -26,6 +26,7 @@ const envSchema = z.object({
   DASHBOARD_STATIC_DIR: z.string().default("./dashboard/public"),
 
   OPENAI_API_KEY: z.string().default(""),
+  GOOGLE_AI_STUDIO_API_KEY: z.string().default(""),
   OPENAI_MODEL: z.string().default("gpt-4.1-mini"),
   ASSISTANT_LLM_PROVIDER: z.enum(["none", "ollama", "gemini_cli"]).default("ollama"),
   ASSISTANT_LLM_SYSTEM_PROMPT: z.string().default(""),
@@ -48,9 +49,33 @@ const envSchema = z.object({
   SQLITE_VEC_EXTENSION_PATH: z.string().default(""),
 
   LOG_LEVEL: z.enum(["debug", "info", "warn", "error"]).default("info"),
+
+  SETTINGS_UI_WRITE_ENABLED: z.string().default(process.env.NODE_ENV === "production" ? "false" : "true"),
 });
 
 const parsedEnv = envSchema.parse(process.env);
+
+const resolveOllamaBaseUrl = (
+  primary: string,
+  legacy: string | undefined,
+): string => {
+  const trimmedPrimary = primary.trim();
+  if (trimmedPrimary) {
+    return trimmedPrimary;
+  }
+
+  const trimmedLegacy = legacy?.trim() ?? "";
+  if (trimmedLegacy) {
+    return trimmedLegacy;
+  }
+
+  return "http://host.docker.internal:11434";
+};
+
+const resolvedOllamaBaseUrl = resolveOllamaBaseUrl(
+  parsedEnv.OLLAMA_BASE_URL,
+  process.env.OLLAMA_URL,
+);
 
 const allowedTelegramChatIds = new Set(
   parsedEnv.TELEGRAM_ALLOWED_CHAT_IDS.split(",")
@@ -60,7 +85,65 @@ const allowedTelegramChatIds = new Set(
 
 export const env = {
   ...parsedEnv,
+  OLLAMA_BASE_URL: resolvedOllamaBaseUrl,
   ASSISTANT_SHOW_REASONING: parsedEnv.ASSISTANT_SHOW_REASONING === "true",
   NOTION_LOG_ENABLED: parsedEnv.NOTION_LOG_ENABLED === "true",
+  SETTINGS_UI_WRITE_ENABLED: parsedEnv.SETTINGS_UI_WRITE_ENABLED === "true",
   allowedTelegramChatIds,
+};
+
+export type RuntimeMutableEnvKey =
+  | "TELEGRAM_BOT_TOKEN"
+  | "OPENAI_API_KEY"
+  | "GOOGLE_AI_STUDIO_API_KEY"
+  | "NOTION_API_KEY"
+  | "NOTION_PARENT_PAGE_ID"
+  | "SETTINGS_UI_WRITE_ENABLED";
+
+const normalizeBooleanString = (value: string): "true" | "false" => {
+  return value === "true" ? "true" : "false";
+};
+
+export const applyRuntimeEnvPatch = (patch: Partial<Record<RuntimeMutableEnvKey, string>>): void => {
+  for (const [rawKey, rawValue] of Object.entries(patch)) {
+    if (typeof rawValue !== "string") {
+      continue;
+    }
+
+    const key = rawKey as RuntimeMutableEnvKey;
+    const value = rawValue;
+
+    if (key === "SETTINGS_UI_WRITE_ENABLED") {
+      const normalized = normalizeBooleanString(value);
+      process.env[key] = normalized;
+      env.SETTINGS_UI_WRITE_ENABLED = normalized === "true";
+      continue;
+    }
+
+    process.env[key] = value;
+
+    if (key === "TELEGRAM_BOT_TOKEN") {
+      env.TELEGRAM_BOT_TOKEN = value;
+      continue;
+    }
+
+    if (key === "OPENAI_API_KEY") {
+      env.OPENAI_API_KEY = value;
+      continue;
+    }
+
+    if (key === "GOOGLE_AI_STUDIO_API_KEY") {
+      env.GOOGLE_AI_STUDIO_API_KEY = value;
+      continue;
+    }
+
+    if (key === "NOTION_API_KEY") {
+      env.NOTION_API_KEY = value;
+      continue;
+    }
+
+    if (key === "NOTION_PARENT_PAGE_ID") {
+      env.NOTION_PARENT_PAGE_ID = value;
+    }
+  }
 };

@@ -33,6 +33,14 @@ export interface AssistantMessageOutput {
   ragCount: number;
 }
 
+export interface AssistantHistoryItem {
+  id: number;
+  chatId: string;
+  role: "user" | "assistant" | "system";
+  content: string;
+  createdAt: string;
+}
+
 const DEFAULT_SYSTEM_PROMPT = [
   "당신은 AI_BISEO의 메인 비서입니다.",
   "반드시 한국어로 답변하고, 사용자가 바로 실행할 수 있는 형태로 간결하게 작성하세요.",
@@ -77,6 +85,19 @@ const buildConversationContext = (
 
 export class AssistantController {
   constructor(private readonly options: AssistantControllerOptions) {}
+
+  public async listConversationHistory(chatId: string, limit = 30): Promise<AssistantHistoryItem[]> {
+    const normalizedLimit = Math.max(1, Math.min(limit, 100));
+    const items = await this.options.conversationRepository.listRecentMessagesByChat(chatId, normalizedLimit);
+
+    return items.map((item) => ({
+      id: item.id,
+      chatId: item.chatId,
+      role: item.role,
+      content: item.content,
+      createdAt: item.createdAt,
+    }));
+  }
 
   public async handleTelegramText(input: AssistantMessageInput): Promise<AssistantMessageOutput> {
     const sessionId = toSessionId(input.chatId);

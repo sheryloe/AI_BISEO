@@ -110,3 +110,13 @@ npm run start
 npm run typecheck
 npm run notion:push:workspace
 ```
+
+## API Key Settings Guide
+
+- The dashboard `/api/settings/env` form writes entered values directly to the `.env` file.
+- Sensitive values are masked in responses (for example: `abc***xyz`) and are not shown in plain text.
+- This change is persisted to `.env` immediately and also applies to process env in the running process, but settings that were initialized at app startup (like `src/core/env.ts`) should be reloaded after restart for full consistency.
+- Recommended flow:
+  - Local/dev: use dashboard for convenience.
+  - Production: keep secrets in infrastructure-managed env secrets and avoid manual dashboard editing.
+  - Never post, share, or commit real `.env` values.

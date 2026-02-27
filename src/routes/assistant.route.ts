@@ -1,4 +1,4 @@
-import { Router } from "express";
+﻿import { Router } from "express";
 
 import { AssistantController } from "../core/orchestrator/assistantController";
 
@@ -6,80 +6,207 @@ interface AssistantRouterOptions {
   controller: AssistantController;
 }
 
+interface NormalizedError {
+  status: number;
+  body: {
+    message: string;
+    detail?: string;
+  };
+}
+
+const DEFAULT_CLIENT_ERROR_MESSAGE = "클라이언트 요청을 처리할 수 없습니다.";
+
+const getClientErrorDetail = (status: number): string => {
+  if (status === 400) {
+    return "요청 형식/파라미터를 확인해 주세요.";
+  }
+
+  if (status === 401) {
+    return "인증이 필요하거나 토큰이 유효하지 않습니다.";
+  }
+
+  if (status === 403) {
+    return "권한이 없습니다.";
+  }
+
+  if (status === 404) {
+    return "요청한 리소스를 찾을 수 없습니다.";
+  }
+
+  return DEFAULT_CLIENT_ERROR_MESSAGE;
+};
+
+const sanitizeClientErrorText = (message: string): string => {
+  const trimmed = message.trim();
+  if (!trimmed || trimmed === "Bad Request") {
+    return DEFAULT_CLIENT_ERROR_MESSAGE;
+  }
+
+  return trimmed;
+};
+
+const parseLimit = (raw: unknown, fallback: number): number => {
+  if (typeof raw !== "string" || !raw.trim()) {
+    return fallback;
+  }
+
+  const parsed = Number.parseInt(raw, 10);
+  if (!Number.isFinite(parsed)) {
+    return fallback;
+  }
+
+  return Math.max(1, Math.min(parsed, 100));
+};
+
+const getStatusCode = (error: unknown): number => {
+  if (error && typeof error === "object") {
+    const candidate = error as { status?: unknown; statusCode?: unknown };
+
+    if (typeof candidate.status === "number") {
+      return candidate.status;
+    }
+
+    if (typeof candidate.statusCode === "number") {
+      return candidate.statusCode;
+    }
+  }
+
+  return 500;
+};
+
+const normalizeError = (error: unknown): NormalizedError => {
+  const status = getStatusCode(error);
+  const normalizedStatus = status >= 400 && status < 600 ? status : 500;
+  const isServerError = normalizedStatus >= 500;
+  const message = error instanceof Error ? sanitizeClientErrorText(error.message) : "요청 처리 중 오류가 발생했습니다.";
+
+  return {
+    status: normalizedStatus,
+    body: {
+      message,
+      detail: isServerError ? "Internal Server Error" : getClientErrorDetail(normalizedStatus),
+    },
+  };
+};
+
+const pickFirstString = (candidates: unknown[]): string => {
+  for (const candidate of candidates) {
+    if (typeof candidate === "string" && candidate.trim()) {
+      return candidate.trim();
+    }
+  }
+
+  return "";
+};
+
+const readTextFromMessages = (value: unknown): string => {
+  if (!Array.isArray(value)) {
+    return "";
+  }
+
+  const reversed = [...value].reverse();
+
+  for (const item of reversed) {
+    if (typeof item === "string" && item.trim()) {
+      return item.trim();
+    }
+
+    if (item && typeof item === "object") {
+      const content = (item as { content?: unknown }).content;
+      if (typeof content === "string" && content.trim()) {
+        return content.trim();
+      }
+    }
+  }
+
+  return "";
+};
+
 export const createAssistantRouter = ({ controller }: AssistantRouterOptions): Router => {
   const router = Router();
 
-  router.post("/route", async (req, res) => {
-    const body = req.body;
-    const query = req.query as Record<string, unknown>;
+  router.get("/history", async (req, res) => {
+    try {
+      const query = req.query as Record<string, unknown>;
+      const chatId = typeof query.chatId === "string" && query.chatId.trim().length > 0
+        ? query.chatId.trim()
+        : "web:anonymous";
+      const limit = parseLimit(query.limit, 30);
 
-    const chatIdFromBody = typeof body === "object" && body !== null && "chatId" in body
-      ? (body as { chatId?: unknown }).chatId
-      : undefined;
+      const items = await controller.listConversationHistory(chatId, limit);
 
-    const textFromBody = (() => {
-      if (typeof body === "string") {
-        return body;
-      }
-
-      if (typeof body === "object" && body !== null) {
-        if (typeof body.text === "string") {
-          return body.text;
-        }
-        if (typeof body.command === "string") {
-          return body.command;
-        }
-        if (typeof body.message === "string") {
-          return body.message;
-        }
-      }
-
-      if (typeof query.text === "string") {
-        return query.text;
-      }
-      if (typeof query.command === "string") {
-        return query.command;
-      }
-      if (typeof query.message === "string") {
-        return query.message;
-      }
-
-      return "";
-    })();
-
-    const chatId = typeof chatIdFromBody === "string" && chatIdFromBody.trim().length > 0
-      ? chatIdFromBody.trim()
-      : "web:anonymous";
-
-    const text = typeof textFromBody === "string" ? textFromBody.trim() : "";
-
-    if (!text) {
       res.status(200).json({
         ok: true,
         item: {
-          replyText: "메시지가 비어 있습니다. 예: `내일 일정 알려줘`",
-          route: "input_missing",
-          routeLabel: "입력값 누락",
-          reason: "텍스트가 비어 있습니다.",
-          ragCount: 0,
+          chatId,
+          count: items.length,
+          items,
         },
       });
-      return;
+    } catch (error) {
+      const normalized = normalizeError(error);
+      res.status(normalized.status).json({
+        ok: false,
+        error: normalized.body,
+      });
     }
+  });
 
-    const result = await controller.handleTelegramText({
-      chatId,
-      username:
-        typeof body === "object" && body !== null && typeof (body as { username?: unknown }).username === "string"
-          ? (body as { username?: string }).username
-          : undefined,
-      text,
-    });
+  router.post("/route", async (req, res) => {
+    try {
+      const body = req.body;
+      const query = req.query as Record<string, unknown>;
+      const normalizedBody = body && typeof body === "object" ? (body as Record<string, unknown>) : {};
 
-    res.status(200).json({
-      ok: true,
-      item: result,
-    });
+      const chatId = pickFirstString([
+        normalizedBody.chatId,
+        normalizedBody.sessionId,
+        query.chatId,
+      ]) || "web:anonymous";
+
+      const text = pickFirstString([
+        typeof body === "string" ? body : "",
+        normalizedBody.text,
+        normalizedBody.command,
+        normalizedBody.message,
+        normalizedBody.prompt,
+        normalizedBody.input,
+        readTextFromMessages(normalizedBody.messages),
+        query.text,
+        query.command,
+        query.message,
+        query.prompt,
+        query.input,
+      ]);
+
+      if (!text) {
+        res.status(422).json({
+          ok: false,
+          error: {
+            message: "입력 텍스트가 비어 있습니다.",
+            detail: "text/message/command/prompt/input/messages 중 하나를 전달해 주세요.",
+          },
+        });
+        return;
+      }
+
+      const result = await controller.handleTelegramText({
+        chatId,
+        username: pickFirstString([normalizedBody.username]) || undefined,
+        text,
+      });
+
+      res.status(200).json({
+        ok: true,
+        item: result,
+      });
+    } catch (error) {
+      const normalized = normalizeError(error);
+      res.status(normalized.status).json({
+        ok: false,
+        error: normalized.body,
+      });
+    }
   });
 
   return router;

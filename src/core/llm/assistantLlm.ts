@@ -25,16 +25,51 @@ interface OllamaTagsResponse {
 
 const toNormalizedModel = (name: string): string => name.trim().toLowerCase();
 
-const toErrorMessage = (error: unknown): string => {
+const truncateText = (value: string, maxLength = 2400): string => {
+  if (value.length <= maxLength) {
+    return value;
+  }
+
+  return `${value.slice(0, maxLength)}...`;
+};
+
+const safeStringify = (value: unknown): string => {
+  if (value === undefined) {
+    return "undefined";
+  }
+
+  if (typeof value === "string") {
+    return value;
+  }
+
+  try {
+    return JSON.stringify(value);
+  } catch {
+    return String(value);
+  }
+};
+
+const toAxiosErrorMessage = (error: unknown): string => {
   if (axios.isAxiosError(error)) {
-    const responseData = (error.response?.data as { error?: string } | undefined)?.error;
-    if (responseData) {
-      return `HTTP ${error.response?.status} ${error.response?.statusText ?? ""} ${responseData}`.trim();
+    const status = error.response?.status;
+    const statusText = error.response?.statusText;
+    const statusPart = status ? `HTTP ${status}${statusText ? ` ${statusText}` : ""}` : "HTTP 요청 실패";
+    const responseData = error.response?.data;
+
+    if (responseData !== undefined) {
+      const responsePayload = truncateText(safeStringify(responseData), 2200);
+      const responseText = responsePayload === "{}" || responsePayload === "undefined" ? "응답 본문 없음" : responsePayload;
+      const requestData = error.config?.data;
+      const requestPayload = requestData ? truncateText(safeStringify(requestData), 1200) : "요청 데이터 없음";
+      const requestInfo = error.config?.url
+        ? `\n요청URL: ${error.config.method?.toUpperCase() ?? "GET"} ${error.config.url}`
+        : "";
+      return `${statusPart} | error.response.data: ${responseText} | request.data: ${requestPayload}${requestInfo}`.trim();
     }
 
     const code = error.code ?? "axios_error";
-    const base = error.message?.trim() || "요청 실패";
-    return `${code}: ${base}`;
+    const message = error.message?.trim() || "요청 실패";
+    return `${code}: ${message}`;
   }
 
   if (error instanceof Error) {
@@ -70,13 +105,31 @@ class NoopAssistantLlmProvider implements AssistantLlmProvider {
 }
 
 class OllamaAssistantLlmProvider implements AssistantLlmProvider {
+  private describeAxiosFailure(error: unknown, context: string, baseUrl: string): void {
+    if (!axios.isAxiosError(error)) {
+      return;
+    }
+
+    logger.error(`Ollama ${context} 호출 실패`, {
+      baseUrl,
+      status: error.response?.status,
+      statusText: error.response?.statusText,
+      code: error.code,
+      requestUrl: error.config?.url,
+      requestMethod: error.config?.method?.toUpperCase(),
+      responseHeaders: error.response?.headers,
+      responseData: truncateText(safeStringify(error.response?.data), 4000),
+      requestData: error.config?.data ? truncateText(safeStringify(error.config.data), 2000) : undefined,
+      url: error.config?.url,
+      message: error.message,
+    });
+  }
+
   private async resolveBaseUrls(): Promise<string[]> {
     const baseUrl = env.OLLAMA_BASE_URL.replace(/\/$/, "");
     const candidateBaseUrls = [baseUrl];
 
-    if (baseUrl.includes("host.docker.internal")) {
-      candidateBaseUrls.push(baseUrl.replace("host.docker.internal", "localhost"));
-    } else if (baseUrl.includes("localhost")) {
+    if (baseUrl.includes("localhost")) {
       candidateBaseUrls.push(baseUrl.replace("localhost", "host.docker.internal"));
     }
 
@@ -84,25 +137,30 @@ class OllamaAssistantLlmProvider implements AssistantLlmProvider {
   }
 
   private async ensureModelExists(baseUrl: string): Promise<string | null> {
-    const tagsResponse = await axios.get<OllamaTagsResponse>(`${baseUrl}/api/tags`, {
-      timeout: env.OLLAMA_REQUEST_TIMEOUT_MS,
-    });
+    try {
+      const tagsResponse = await axios.get<OllamaTagsResponse>(`${baseUrl}/api/tags`, {
+        timeout: env.OLLAMA_REQUEST_TIMEOUT_MS,
+      });
 
-    const candidates = (tagsResponse.data.models ?? [])
-      .map((model) => model.name)
-      .filter((name): name is string => Boolean(name))
-      .map(toNormalizedModel);
+      const candidates = (tagsResponse.data.models ?? [])
+        .map((model) => model.name)
+        .filter((name): name is string => Boolean(name))
+        .map(toNormalizedModel);
 
-    const targetModel = toNormalizedModel(env.OLLAMA_MODEL);
-    if (candidates.includes(targetModel)) {
-      return env.OLLAMA_MODEL;
+      const targetModel = toNormalizedModel(env.OLLAMA_MODEL);
+      if (candidates.includes(targetModel)) {
+        return env.OLLAMA_MODEL;
+      }
+
+      if (candidates.length === 0) {
+        return null;
+      }
+
+      return candidates[0];
+    } catch (error) {
+      this.describeAxiosFailure(error, "모델 목록 조회(/api/tags)", baseUrl);
+      throw error;
     }
-
-    if (candidates.length === 0) {
-      return null;
-    }
-
-    return candidates[0];
   }
 
   public async generate(input: LlmGenerateInput): Promise<LlmGenerateOutput> {
@@ -148,6 +206,10 @@ class OllamaAssistantLlmProvider implements AssistantLlmProvider {
           promptPreview: buildPromptPreview(input.messages),
         };
       } catch (error) {
+        logger.error("Ollama 후보 URL 처리 중 오류", {
+          candidateBaseUrl,
+          error: toAxiosErrorMessage(error),
+        });
         lastError = error;
       }
     }
@@ -185,10 +247,15 @@ export class AssistantLlmService {
 
       return result;
     } catch (error) {
+      logger.error("LLM 응답 생성 에러 본문", {
+        provider: env.ASSISTANT_LLM_PROVIDER,
+        route: input.route,
+        rawError: toAxiosErrorMessage(error),
+      });
       logger.warn("LLM 응답 생성에 실패했습니다. Phase 1 기본 응답으로 폴백합니다.", {
         provider: env.ASSISTANT_LLM_PROVIDER,
         route: input.route,
-        error: toErrorMessage(error),
+        error: toAxiosErrorMessage(error),
       });
       return null;
     }
