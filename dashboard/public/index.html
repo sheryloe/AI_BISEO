@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AI_BISEO Dashboard</title>
+  <link rel="stylesheet" href="/dashboard/styles.css" />
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <h1>AI_BISEO</h1>
+      <p class="subtitle">메인 비서 운영 대시보드</p>
+      <nav>
+        <a href="#overview">요약</a>
+        <a href="#assistant">어시스턴트</a>
+        <a href="#modules">모듈 상태</a>
+        <a href="#events">실시간 이벤트</a>
+      </nav>
+      <div class="status-badge">
+        <span>실시간 상태</span>
+        <strong id="wsStatus">연결 대기</strong>
+      </div>
+    </aside>
+
+    <main class="content">
+      <section id="overview" class="card">
+        <h2>서비스 요약</h2>
+        <div id="health" class="grid cards">
+          <article class="tile">
+            <h3>헬스체크</h3>
+            <p id="healthText">확인 중...</p>
+          </article>
+          <article class="tile">
+            <h3>요청 카운트</h3>
+            <p id="requestCount">0</p>
+          </article>
+          <article class="tile">
+            <h3>마지막 라우팅</h3>
+            <p id="lastRoute">-</p>
+          </article>
+          <article class="tile">
+            <h3>마지막 이벤트</h3>
+            <p id="lastEvent">-</p>
+          </article>
+        </div>
+      </section>
+
+      <section id="assistant" class="card">
+        <h2>어시스턴트 라우트 테스트</h2>
+        <form id="assistantForm">
+          <label>
+            Chat ID
+            <input type="text" id="chatId" value="web:test-user" />
+          </label>
+          <label>
+            메시지
+            <textarea id="assistantText" rows="3" placeholder="예: 안녕, 이번 주 일정 알려줘"></textarea>
+          </label>
+          <button type="submit">전송</button>
+        </form>
+        <div class="result-box">
+          <pre id="assistantResult">아직 응답이 없습니다.</pre>
+        </div>
+      </section>
+
+      <section id="modules" class="card">
+        <h2>모듈 상태</h2>
+        <button id="refreshModules">새로고침</button>
+        <div id="moduleList" class="module-list">로딩 중...</div>
+      </section>
+
+      <section id="events" class="card">
+        <h2>실시간 이벤트</h2>
+        <button id="clearEvents">이력 지우기</button>
+        <ul id="eventLog" class="event-log"></ul>
+      </section>
+    </main>
+  </div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="/dashboard/app.js"></script>
+</body>
+</html>
