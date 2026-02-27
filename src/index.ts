@@ -29,21 +29,41 @@ const corsOrigins = env.CORS_ORIGIN === "*"
   : env.CORS_ORIGIN.split(",").map((origin) => origin.trim()).filter(Boolean);
 
 app.use(cors({ origin: corsOrigins }));
-app.use(express.json({ limit: "2mb" }));
-app.use(express.text({ type: "text/plain" }));
-app.use(express.urlencoded({ extended: true }));
-
-app.use((error, _req, res, next) => {
-  if (error instanceof SyntaxError && (error as Error & { status?: number }).status === 400) {
-    logger.warn("요청 본문 파싱에 실패했습니다.", {
-      error: error.message,
-    });
-    res.status(400).json({ detail: "Bad Request", message: "요청 본문이 JSON 형식이 아닙니다." });
+app.use(express.text({
+  type: (req) => {
+    const contentType = req.headers["content-type"]?.toString().toLowerCase() ?? "";
+    return contentType.includes("application/json")
+      || contentType.includes("+json")
+      || contentType.startsWith("text/");
+  },
+  limit: "2mb",
+}));
+app.use((req, _res, next) => {
+  if (typeof req.body !== "string") {
+    next();
     return;
   }
 
-  next(error);
+  const rawBody = req.body.trim();
+  if (!rawBody) {
+    req.body = {};
+    next();
+    return;
+  }
+
+  const contentType = req.headers["content-type"]?.toString().toLowerCase() ?? "";
+
+  if (contentType.includes("application/json") || contentType.includes("+json")) {
+    try {
+      req.body = JSON.parse(rawBody);
+    } catch {
+      req.body = { text: rawBody };
+    }
+  }
+
+  next();
 });
+app.use(express.urlencoded({ extended: true }));
 
 const io = new SocketIOServer(httpServer, {
   cors: {

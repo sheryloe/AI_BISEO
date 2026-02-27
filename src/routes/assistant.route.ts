@@ -54,7 +54,16 @@ export const createAssistantRouter = ({ controller }: AssistantRouterOptions): R
     const text = typeof textFromBody === "string" ? textFromBody.trim() : "";
 
     if (!text) {
-      res.status(400).json({ ok: false, message: "text 필드는 필수입니다." });
+      res.status(200).json({
+        ok: true,
+        item: {
+          replyText: "메시지가 비어 있습니다. 예: `내일 일정 알려줘`",
+          route: "input_missing",
+          routeLabel: "입력값 누락",
+          reason: "텍스트가 비어 있습니다.",
+          ragCount: 0,
+        },
+      });
       return;
     }
 
