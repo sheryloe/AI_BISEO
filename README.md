@@ -1,61 +1,76 @@
-# AI_BISEO
+# AI_BISEO Service Manual
 
-모듈형 AI 비서 시스템의 메인 컨트롤러입니다.  
-현재 구성은 `Node.js (TypeScript) + Express + Socket.io + SQLite` 기반이며, 텔레그램 입력 처리, RAG 조회, 모듈 라우팅, n8n 콜백 수신의 코어 골격을 포함합니다.
+AI_BISEO는 텔레그램 기반 멀티모듈 AI 비서 백엔드입니다.  
+현재 서비스는 `Express + Socket.io + SQLite + n8n` 구조로 동작하며, 블로그 자동화 파이프라인과 비서 라우팅을 함께 제공합니다.
 
-## 핵심 기능
+## 서비스 개요
 
-- 텔레그램 메시지 수신/응답 처리
-- 의도 기반 라우팅(로컬 규칙 기반)
-- RAG 저장/조회(SQLite)
-- n8n 블로그 파이프라인 콜백 수신
-- 모듈 상태/이력 조회 API
-- 모니터링 Socket.io 네임스페이스 제공
+- 텔레그램 입력을 수신하고 명령어 또는 자연어로 처리
+- 의도 라우팅(`rag_search`, `call_blog`, `call_trading_status`, `call_ledger`, `call_coding_history`)
+- RAG 저장/검색(SQLite)
+- n8n 블로그 워크플로우 트리거 및 실행 추적
+- 모듈 상태/히스토리 API + 웹 대시보드(`/dashboard`)
+- Socket.io 실시간 이벤트 모니터링
 
-## 기술 스택
+## 핵심 아키텍처
 
-- Runtime: Node.js 20+
-- Language: TypeScript
-- Server: Express, Socket.io
-- DB: SQLite (`sqlite3`, `sqlite`)
-- Integration: Telegraf, OpenAI SDK, Notion SDK
-- Container: Docker Compose
+- `src/services/telegram.service.ts`: 텔레그램 업데이트 수신, 명령어 처리
+- `src/core/orchestrator/assistantController.ts`: 메인 비서 라우팅/응답
+- `src/modules/interfaces/blogWorkflowClient.ts`: n8n 트리거 클라이언트
+- `src/routes/n8nCallback.route.ts`: n8n 상태 콜백 수신
+- `src/modules/ai_writer_tistory/openAiBridge.ts`: OpenAI 텍스트/이미지 브리지
+- `src/routes/aiWriterPipeline.route.ts`: 파이프라인 트리거/조회/브리지 API
 
-## 빠른 시작
+## 환경 변수
 
-### 1) 환경 변수 준비
+기본 파일: `.env.example` -> `.env`
 
-```bash
-cp .env.example .env
-```
-
-`.env`에 최소한 아래 값들을 채워야 합니다.
+필수 또는 사실상 필수 항목:
 
 - `TELEGRAM_BOT_TOKEN`
-- `OPENAI_API_KEY` (사용 시)
-- `NOTION_API_KEY` / `NOTION_PARENT_PAGE_ID` (사용 시)
-- `N8N_BLOG_TRIGGER_WEBHOOK_URL` / `N8N_BLOG_CALLBACK_SECRET` (사용 시)
+- `N8N_BLOG_TRIGGER_WEBHOOK_URL`
+- `N8N_BLOG_CALLBACK_SECRET` (권장)
+- `OPENAI_API_KEY` (AI Writer 파이프라인 사용 시)
+
+주요 운영 항목:
+
+- `APP_PORT` (기본 `3000`)
+- `TELEGRAM_MODE` (`polling` | `webhook` | `both`)
+- `SOCKET_NAMESPACE` (기본 `/monitoring`)
+- `N8N_BLOG_CALLBACK_BASE_PATH` + `N8N_BLOG_CALLBACK_ROUTE`
 
 주의:
-- `.env`는 커밋 대상이 아닙니다.
-- 실제 키/토큰은 절대 저장소에 푸시하지 않습니다.
 
-### 2) 로컬 실행
+- `.env`와 실제 API 키는 절대 저장소에 커밋하지 않습니다.
+- 대시보드에서 저장한 키는 런타임 적용되지만, 설정 일관성을 위해 재시작을 권장합니다.
+
+## 로컬 실행
 
 ```bash
 npm install
 npm run dev
 ```
 
-기본 포트: `3000`
-
-### 3) Docker 실행
+검증:
 
 ```bash
-docker compose up -d
+npm run typecheck
+npm run test:smoke:phase1
 ```
 
-영속 데이터는 Host 경로로 마운트됩니다.
+## Docker 배포
+
+```bash
+npm run docker:up
+```
+
+또는:
+
+```bash
+docker compose up -d --build
+```
+
+영속 볼륨:
 
 - `./storage/sqlite -> /app/storage/sqlite`
 - `./storage/artifacts -> /app/storage/artifacts`
@@ -63,60 +78,91 @@ docker compose up -d
 
 ## 주요 엔드포인트
 
-- `GET /health`: 서버 헬스 체크
-- `POST /api/assistant/route`: 사용자 입력 라우팅/응답
-- `GET /api/rag/*`: RAG 데이터 조회 계열
-- `GET /api/modules/*`: 모듈 상태/이력 조회 계열
-- `POST {N8N_BLOG_CALLBACK_BASE_PATH}{N8N_BLOG_CALLBACK_ROUTE}`: n8n 콜백 수신
+- `GET /health`
+- `POST /api/assistant/route`
+- `GET /api/assistant/history`
+- `GET /api/modules`
+- `GET /api/modules/:moduleId/status`
+- `GET /api/modules/AI_Writer_TISTORY/pipelines/runs`
+- `GET /api/modules/AI_Writer_TISTORY/pipelines/runs/:runId`
+- `POST /api/modules/AI_Writer_TISTORY/pipelines/trigger`
+- `POST /api/modules/AI_Writer_TISTORY/pipelines/llm/generate`
+- `POST /api/modules/AI_Writer_TISTORY/pipelines/image/generate`
+- `POST {N8N_BLOG_CALLBACK_BASE_PATH}{N8N_BLOG_CALLBACK_ROUTE}`
 
-## 모니터링
+## 텔레그램 명령어
 
-- Socket.io namespace: `.env`의 `SOCKET_NAMESPACE` (기본 `/monitoring`)
-- 대시보드 제공 방식:
-  - `DASHBOARD_SERVE_MODE=single`: 백엔드가 `/dashboard`로 정적 파일 서빙
-  - `DASHBOARD_SERVE_MODE=separate`: 프론트 분리 운영
+공통:
 
-## 프로젝트 구조
+- `/help [topic]`, `/menu`
+- `/ping`
+- `/ask <질문>`
 
-```text
-src/
-  core/
-    db/              # SQLite 연결/리포지토리
-    llm/             # LLM 추상화
-    orchestrator/    # Assistant 제어
-    router/          # 의도 라우팅
-  modules/           # 모듈 레지스트리 및 모듈별 어댑터
-  routes/            # API/Webhook 라우터
-  services/          # Telegram 등 외부 연동
-docs/                # 설계 문서
-prompt_log/          # 프롬프트/세션 기록
-storage/             # DB/아티팩트 영속 저장
-```
+운영/점검:
 
-## 현재 구현 범위 (Phase 1 중심)
+- `/status`
+- `/modules`
+- `/history [개수]`
 
-- 메인 비서 코어 라우팅 구조
-- 텔레그램 연동 골격
-- n8n 블로그 콜백 수신/추적
-- SQLite 기반 대화/로그/RAG 저장소
-- 외부 모듈 호출 인터페이스 스텁
+블로그 파이프라인:
 
-## 개발 스크립트
+- `/blog <주제>`
+- `/pipeline [개수]`
+- `/run <runId>`
+
+라우팅 강제 실행:
+
+- `/rag <질문>`
+- `/trade [요청]`
+- `/ledger [요청]`
+- `/coding [요청]`
+
+## 대시보드
+
+- URL: `/dashboard`
+- 기능:
+- 모듈 상태 관제
+- 비서 샌드박스 호출
+- 파이프라인 트리거/실행 조회
+- 실시간 이벤트 로그
+- HTTP 에러 진단 조회
+
+## 운영 런북
+
+- AI Writer 전용: `docs/AI_WRITER_TISTORY_SERVICE_RUNBOOK.md`
+- 도커 퀵스타트: `docs/PHASE1_DOCKER_QUICKSTART.md`
+
+## 배포 체크리스트
+
+- `npm run typecheck` 성공
+- `npm run build` 성공
+- `npm run test:smoke:phase1` 성공
+- `/health` 200 확인
+- 텔레그램 `/ping`, `/help`, `/status` 응답 확인
+- 블로그 `/blog <주제>` 후 `/pipeline`, `/run <runId>` 확인
+
+## 트러블슈팅
+
+- `OPENAI_API_KEY가 설정되지 않았습니다`
+- 원인: OpenAI 브리지 키 누락
+- 조치: `.env` 또는 설정 API에 `OPENAI_API_KEY` 반영 후 재시작
+
+- `n8n webhook 404`
+- 원인: 워크플로우 publish/active 누락
+- 조치: n8n에서 workflow publish 및 active 상태 확인
+
+- 텔레그램 응답 없음
+- 원인: `TELEGRAM_BOT_TOKEN` 누락, 허용 chat_id 제한, 모드 설정 불일치
+- 조치: `.env` 점검 후 서버 로그 확인
+
+## 유틸 스크립트
 
 ```bash
 npm run dev
 npm run build
 npm run start
 npm run typecheck
+npm run test:smoke:phase1
+npm run n8n:patch:ai-writer-openai
 npm run notion:push:workspace
 ```
-
-## API Key Settings Guide
-
-- The dashboard `/api/settings/env` form writes entered values directly to the `.env` file.
-- Sensitive values are masked in responses (for example: `abc***xyz`) and are not shown in plain text.
-- This change is persisted to `.env` immediately and also applies to process env in the running process, but settings that were initialized at app startup (like `src/core/env.ts`) should be reloaded after restart for full consistency.
-- Recommended flow:
-  - Local/dev: use dashboard for convenience.
-  - Production: keep secrets in infrastructure-managed env secrets and avoid manual dashboard editing.
-  - Never post, share, or commit real `.env` values.

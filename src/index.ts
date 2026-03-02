@@ -12,7 +12,9 @@ import { env } from "./core/env";
 import { AssistantLlmService } from "./core/llm/assistantLlm";
 import { logger } from "./core/logger";
 import { AssistantController } from "./core/orchestrator/assistantController";
+import { AiWriterOpenAiBridge } from "./modules/ai_writer_tistory/openAiBridge";
 import { aiWriterPipelineTracker } from "./modules/ai_writer_tistory/pipelineTracker";
+import { BlogWorkflowClient } from "./modules/interfaces/blogWorkflowClient";
 import { moduleRegistry } from "./modules/registry";
 import { createAiWriterPipelineRouter } from "./routes/aiWriterPipeline.route";
 import { createAssistantRouter } from "./routes/assistant.route";
@@ -228,6 +230,41 @@ const buildClientErrorDetail = (status: number): string => {
   return "클라이언트 요청을 처리할 수 없습니다.";
 };
 
+const toSnippet = (value: string, maxChars: number): string => {
+  if (value.length <= maxChars) {
+    return value;
+  }
+
+  return `${value.slice(0, maxChars)}...`;
+};
+
+const parsePositiveIntArg = (raw: string, fallback: number, min: number, max: number): number => {
+  const trimmed = raw.trim();
+  if (!trimmed) {
+    return fallback;
+  }
+
+  const parsed = Number.parseInt(trimmed, 10);
+  if (!Number.isFinite(parsed)) {
+    return fallback;
+  }
+
+  return Math.max(min, Math.min(parsed, max));
+};
+
+const formatIsoTime = (iso: string): string => {
+  if (!iso) {
+    return "-";
+  }
+
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) {
+    return iso;
+  }
+
+  return date.toISOString();
+};
+
 let requestSequence = 0;
 app.use((req, res, next) => {
   const requestId = ++requestSequence;
@@ -286,17 +323,28 @@ const bootstrap = async (): Promise<void> => {
   const conversationRepository = new ConversationRepository(sqliteClient.db, ragRepository);
   const llmLogRepository = new LlmLogRepository(sqliteClient.db);
   const llmService = new AssistantLlmService();
+  const openAiBridge = new AiWriterOpenAiBridge();
+  const blogWorkflowClient = new BlogWorkflowClient({
+    moduleRegistry,
+    tracker: aiWriterPipelineTracker,
+    emitMonitoringEvent,
+  });
   const assistantController = new AssistantController({
     conversationRepository,
     ragRepository,
     llmService,
     llmLogRepository,
+    blogWorkflowClient,
   });
 
   const moduleRouter = createModuleRouter({ registry: moduleRegistry });
   app.use("/api/modules", moduleRouter);
 
-  const aiWriterPipelineRouter = createAiWriterPipelineRouter({ tracker: aiWriterPipelineTracker });
+  const aiWriterPipelineRouter = createAiWriterPipelineRouter({
+    tracker: aiWriterPipelineTracker,
+    blogWorkflowClient,
+    openAiBridge,
+  });
   app.use("/api/modules/AI_Writer_TISTORY/pipelines", aiWriterPipelineRouter);
 
   const ragRouter = createRagRouter({ ragRepository });
@@ -311,6 +359,8 @@ const bootstrap = async (): Promise<void> => {
   if (env.DASHBOARD_SERVE_MODE === "single") {
     const dashboardDir = path.resolve(process.cwd(), env.DASHBOARD_STATIC_DIR);
     app.use("/dashboard", express.static(dashboardDir));
+    const artifactDir = path.resolve(process.cwd(), "./storage/artifacts");
+    app.use("/artifacts", express.static(artifactDir));
     app.get("/dashboard", (_req, res) => {
       res.sendFile(path.join(dashboardDir, "index.html"));
     });
@@ -370,31 +420,297 @@ const bootstrap = async (): Promise<void> => {
   });
   app.use(env.N8N_BLOG_CALLBACK_BASE_PATH, n8nRouter);
 
+  const executeAssistantMessage = async (input: {
+    chatId: string;
+    username?: string;
+    text: string;
+  }) => {
+    const response = await assistantController.handleTelegramText({
+      chatId: input.chatId,
+      username: input.username,
+      text: input.text,
+    });
+
+    emitMonitoringEvent("router:decision", {
+      chatId: input.chatId,
+      route: response.route,
+      routeLabel: response.routeLabel,
+      reason: response.reason,
+      ragCount: response.ragCount,
+    });
+
+    return {
+      replyText: response.replyText,
+      route: response.route,
+      routeLabel: response.routeLabel,
+      reason: response.reason,
+      ragCount: response.ragCount,
+    };
+  };
+
   void initializeTelegramIntegration({
     app,
     emitMonitoringEvent,
     onTextMessage: async (input) => {
-      const response = await assistantController.handleTelegramText({
-        chatId: input.chatId,
-        username: input.username,
-        text: input.text,
-      });
+      return executeAssistantMessage(input);
+    },
+    onCommandMessage: async (input) => {
+      if (input.command === "status") {
+        const modules = moduleRegistry.listModules();
+        const statuses = await Promise.all(
+          modules.map(async (module) => ({
+            moduleId: module.moduleId,
+            moduleName: module.moduleName,
+            status: await module.getMonitoringStatus(),
+          })),
+        );
 
-      emitMonitoringEvent("router:decision", {
-        chatId: input.chatId,
-        route: response.route,
-        routeLabel: response.routeLabel,
-        reason: response.reason,
-        ragCount: response.ragCount,
-      });
+        const healthyCount = statuses.filter((item) => item.status.healthy).length;
+        const unhealthyCount = statuses.length - healthyCount;
+        const moduleSummary = statuses
+          .map((item) => {
+            const icon = item.status.healthy ? "OK" : "WARN";
+            return `${icon} ${item.moduleId} (${item.status.stage})`;
+          })
+          .join("\n");
 
-      return {
-        replyText: response.replyText,
-        route: response.route,
-        routeLabel: response.routeLabel,
-        reason: response.reason,
-        ragCount: response.ragCount,
-      };
+        return {
+          replyText: [
+            "[AI_BISEO 상태 요약]",
+            `- 시각: ${new Date().toISOString()}`,
+            `- Telegram mode: ${env.TELEGRAM_MODE}`,
+            `- 모듈 헬스: ${healthyCount}/${statuses.length} healthy`,
+            unhealthyCount > 0 ? `- 경고 모듈 수: ${unhealthyCount}` : "- 경고 모듈 수: 0",
+            "",
+            "[모듈 요약]",
+            moduleSummary || "등록된 모듈이 없습니다.",
+          ].join("\n"),
+          route: "telegram_command",
+          routeLabel: "상태 조회",
+          reason: "/status 명령",
+        };
+      }
+
+      if (input.command === "modules") {
+        const modules = moduleRegistry.listModules();
+        const statuses = await Promise.all(
+          modules.map(async (module) => ({
+            moduleId: module.moduleId,
+            moduleName: module.moduleName,
+            status: await module.getMonitoringStatus(),
+          })),
+        );
+
+        const lines = statuses.map((item, index) => {
+          const icon = item.status.healthy ? "OK" : "WARN";
+          return [
+            `${index + 1}. ${item.moduleId} / ${item.moduleName}`,
+            `   - healthy: ${icon}`,
+            `   - stage: ${item.status.stage}`,
+            `   - message: ${item.status.message}`,
+            `   - updatedAt: ${formatIsoTime(item.status.updatedAt)}`,
+          ].join("\n");
+        });
+
+        return {
+          replyText: [
+            "[모듈 상태 상세]",
+            lines.length > 0 ? lines.join("\n") : "등록된 모듈이 없습니다.",
+          ].join("\n"),
+          route: "telegram_command",
+          routeLabel: "모듈 상태 조회",
+          reason: "/modules 명령",
+        };
+      }
+
+      if (input.command === "history") {
+        const limit = parsePositiveIntArg(input.args, 8, 1, 20);
+        const history = await assistantController.listConversationHistory(input.chatId, limit);
+
+        if (history.length === 0) {
+          return {
+            replyText: "최근 대화 기록이 없습니다.",
+            route: "telegram_command",
+            routeLabel: "대화 이력 조회",
+            reason: "/history 명령",
+          };
+        }
+
+        const lines = history.map((item, index) => {
+          return [
+            `${index + 1}. [${item.role}] ${formatIsoTime(item.createdAt)}`,
+            `   ${toSnippet(item.content.replace(/\s+/g, " ").trim(), 160)}`,
+          ].join("\n");
+        });
+
+        return {
+          replyText: [
+            `[최근 대화 기록 ${history.length}건]`,
+            lines.join("\n"),
+          ].join("\n"),
+          route: "telegram_command",
+          routeLabel: "대화 이력 조회",
+          reason: "/history 명령",
+        };
+      }
+
+      if (input.command === "pipeline") {
+        const limit = parsePositiveIntArg(input.args, 5, 1, 15);
+        const runs = aiWriterPipelineTracker.listRuns(limit);
+
+        if (runs.length === 0) {
+          return {
+            replyText: "블로그 파이프라인 실행 이력이 없습니다.",
+            route: "telegram_command",
+            routeLabel: "파이프라인 조회",
+            reason: "/pipeline 명령",
+          };
+        }
+
+        const lines = runs.map((run, index) => {
+          return [
+            `${index + 1}. runId: ${run.runId}`,
+            `   - latest: ${run.latestStatus} / ${run.latestAgentName}`,
+            `   - events: ${run.eventCount}`,
+            `   - updatedAt: ${formatIsoTime(run.updatedAt)}`,
+          ].join("\n");
+        });
+
+        return {
+          replyText: [
+            `[최근 파이프라인 실행 ${runs.length}건]`,
+            lines.join("\n"),
+          ].join("\n"),
+          route: "telegram_command",
+          routeLabel: "파이프라인 조회",
+          reason: "/pipeline 명령",
+        };
+      }
+
+      if (input.command === "run") {
+        const runId = input.args.trim();
+        if (!runId) {
+          return {
+            replyText: "사용법: /run <runId>",
+            route: "telegram_command",
+            routeLabel: "실행 상세 조회",
+            reason: "/run 명령 파라미터 부족",
+          };
+        }
+
+        const run = aiWriterPipelineTracker.getRun(runId);
+        if (!run) {
+          return {
+            replyText: `runId를 찾지 못했습니다: ${runId}`,
+            route: "telegram_command",
+            routeLabel: "실행 상세 조회",
+            reason: "/run 명령 조회 실패",
+          };
+        }
+
+        const recentEvents = run.events.slice(-10).map((event, index) => {
+          return `${index + 1}. ${formatIsoTime(event.receivedAt)} / ${event.agentName} / ${event.status}`;
+        });
+
+        return {
+          replyText: [
+            `[run 상세] ${run.runId}`,
+            `- startedAt: ${formatIsoTime(run.startedAt)}`,
+            `- updatedAt: ${formatIsoTime(run.updatedAt)}`,
+            `- latest: ${run.latestStatus} / ${run.latestAgentName}`,
+            `- eventCount: ${run.eventCount}`,
+            "",
+            "[최근 이벤트]",
+            recentEvents.join("\n"),
+          ].join("\n"),
+          route: "telegram_command",
+          routeLabel: "실행 상세 조회",
+          reason: "/run 명령",
+        };
+      }
+
+      if (input.command === "blog") {
+        const topic = input.args.trim();
+        if (!topic) {
+          return {
+            replyText: "사용법: /blog <주제>\n예시: /blog 2026년 임시 공휴일 정리",
+            route: "telegram_command",
+            routeLabel: "블로그 트리거",
+            reason: "/blog 명령 파라미터 부족",
+          };
+        }
+
+        return executeAssistantMessage({
+          chatId: input.chatId,
+          username: input.username,
+          text: `티스토리 블로그 글 작성해줘: ${topic}`,
+        });
+      }
+
+      if (input.command === "rag") {
+        const question = input.args.trim();
+        if (!question) {
+          return {
+            replyText: "사용법: /rag <질문>\n예시: /rag 지난 작업 핵심 요약해줘",
+            route: "telegram_command",
+            routeLabel: "RAG 검색",
+            reason: "/rag 명령 파라미터 부족",
+          };
+        }
+
+        return executeAssistantMessage({
+          chatId: input.chatId,
+          username: input.username,
+          text: question,
+        });
+      }
+
+      if (input.command === "trade") {
+        const requestText = input.args.trim() || "트레이딩 상태 확인해줘";
+        return executeAssistantMessage({
+          chatId: input.chatId,
+          username: input.username,
+          text: requestText,
+        });
+      }
+
+      if (input.command === "ledger") {
+        const requestText = input.args.trim() || "이번 달 가계부 지출 합계 보여줘";
+        return executeAssistantMessage({
+          chatId: input.chatId,
+          username: input.username,
+          text: requestText,
+        });
+      }
+
+      if (input.command === "coding") {
+        const requestText = input.args.trim() || "최근 코딩 변경 이력 요약해줘";
+        return executeAssistantMessage({
+          chatId: input.chatId,
+          username: input.username,
+          text: requestText,
+        });
+      }
+
+      if (input.command === "ask") {
+        const question = input.args.trim();
+        if (!question) {
+          return {
+            replyText: "사용법: /ask <질문>",
+            route: "telegram_command",
+            routeLabel: "일반 질의",
+            reason: "/ask 명령 파라미터 부족",
+          };
+        }
+
+        return executeAssistantMessage({
+          chatId: input.chatId,
+          username: input.username,
+          text: question,
+        });
+      }
+
+      return null;
     },
   }).catch((error) => {
     logger.error("텔레그램 통합 초기화에 실패했습니다.", {

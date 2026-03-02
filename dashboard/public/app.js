@@ -5,6 +5,7 @@ const requestCount = byId("requestCount");
 const lastRoute = byId("lastRoute");
 const lastEvent = byId("lastEvent");
 const wsStatus = byId("wsStatus");
+const wsChip = byId("wsChip");
 const eventLog = byId("eventLog");
 const moduleList = byId("moduleList");
 const refreshModules = byId("refreshModules");
@@ -18,6 +19,13 @@ const settingsSubmitBtn = byId("settingsSubmitBtn");
 const quickPrompts = byId("quickPrompts");
 const refreshDiagnostics = byId("refreshDiagnostics");
 const diagnosticResult = byId("diagnosticResult");
+const blogTriggerForm = byId("blogTriggerForm");
+const blogTopicInput = byId("blogTopicInput");
+const blogImageCountInput = byId("blogImageCountInput");
+const blogTriggerResult = byId("blogTriggerResult");
+const blogRunList = byId("blogRunList");
+const blogRunDetail = byId("blogRunDetail");
+const refreshBlogRuns = byId("refreshBlogRuns");
 
 const telegramBotTokenInput = byId("telegramBotTokenInput");
 const openAiApiKeyInput = byId("openAiApiKeyInput");
@@ -28,6 +36,12 @@ const notionParentPageIdInput = byId("notionParentPageIdInput");
 const state = {
   requests: 0,
 };
+
+if (document?.body) {
+  requestAnimationFrame(() => {
+    document.body.classList.add("ready");
+  });
+}
 
 const safeText = (value) => {
   if (value === undefined || value === null || value === "") {
@@ -44,6 +58,16 @@ const setText = (element, value) => {
 
   element.textContent = value;
 };
+
+const setWsState = (stateText) => {
+  setText(wsStatus, stateText);
+
+  if (wsChip) {
+    wsChip.dataset.state = stateText;
+  }
+};
+
+setWsState("connecting");
 
 const toText = (obj) => {
   if (typeof obj === "string") {
@@ -67,7 +91,22 @@ const appendEvent = (item) => {
   const li = document.createElement("li");
   const signal = safeText(item.payload?.type || item.payload?.event || item.payload?.path || item.payload?.status || "event");
   const message = safeText(item.payload?.message || item.payload?.reason || JSON.stringify(item.payload));
-  li.textContent = `[${item.time}] ${item.name} | ${signal} | ${message}`;
+
+  const timeCell = document.createElement("span");
+  timeCell.className = "event-time";
+  timeCell.textContent = item.time;
+
+  const nameCell = document.createElement("span");
+  nameCell.className = "event-name";
+  nameCell.textContent = `${item.name} / ${signal}`;
+
+  const messageCell = document.createElement("span");
+  messageCell.className = "event-message";
+  messageCell.textContent = message;
+
+  li.appendChild(timeCell);
+  li.appendChild(nameCell);
+  li.appendChild(messageCell);
   eventLog.prepend(li);
 
   if (eventLog.children.length > 120) {
@@ -272,7 +311,31 @@ const renderModules = async () => {
     for (const item of items) {
       const card = document.createElement("article");
       card.className = "module-item";
-      card.textContent = `${item.moduleId} / ${item.moduleName} - ${safeText(item.monitoringStatus?.stage)} / ${safeText(item.monitoringStatus?.message)}`;
+
+      const top = document.createElement("div");
+      top.className = "module-top";
+
+      const id = document.createElement("span");
+      id.className = "module-id";
+      id.textContent = safeText(item.moduleId);
+
+      const stage = document.createElement("span");
+      stage.className = "module-stage";
+      stage.textContent = safeText(item.monitoringStatus?.stage);
+
+      const name = document.createElement("div");
+      name.className = "module-name";
+      name.textContent = safeText(item.moduleName);
+
+      const message = document.createElement("div");
+      message.className = "module-message";
+      message.textContent = safeText(item.monitoringStatus?.message);
+
+      top.appendChild(id);
+      top.appendChild(stage);
+      card.appendChild(top);
+      card.appendChild(name);
+      card.appendChild(message);
       moduleList.appendChild(card);
     }
   } catch (error) {
@@ -312,16 +375,90 @@ const loadErrorDiagnostics = async () => {
   }
 };
 
+const renderBlogRuns = (items) => {
+  if (!blogRunList) {
+    return;
+  }
+
+  blogRunList.innerHTML = "";
+  if (!Array.isArray(items) || items.length === 0) {
+    const empty = document.createElement("li");
+    empty.textContent = "실행 이력이 없습니다.";
+    blogRunList.appendChild(empty);
+    return;
+  }
+
+  for (const item of items) {
+    const li = document.createElement("li");
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "blog-run-item";
+    button.dataset.runId = safeText(item.runId);
+
+    const runId = document.createElement("span");
+    runId.className = "run-id";
+    runId.textContent = safeText(item.runId);
+
+    const main = document.createElement("span");
+    main.className = "run-main";
+    main.textContent = `${safeText(item.latestStatus)} / ${safeText(item.latestAgentName)} / events=${safeText(item.eventCount)}`;
+
+    button.appendChild(runId);
+    button.appendChild(main);
+    li.appendChild(button);
+    blogRunList.appendChild(li);
+  }
+};
+
+const loadBlogRunDetail = async (runId) => {
+  if (!runId || !blogRunDetail) {
+    return;
+  }
+
+  setText(blogRunDetail, "loading...");
+
+  try {
+    const response = await fetch(`/api/modules/AI_Writer_TISTORY/pipelines/runs/${encodeURIComponent(runId)}`);
+    const result = await readResponse(response);
+
+    if (!result.ok) {
+      setText(blogRunDetail, formatErrorText(result, "run detail load failed"));
+      return;
+    }
+
+    setText(blogRunDetail, toText(result.data?.item || {}));
+  } catch (error) {
+    setText(blogRunDetail, `run detail load failed: ${error.message}`);
+  }
+};
+
+const loadBlogRuns = async () => {
+  try {
+    const response = await fetch("/api/modules/AI_Writer_TISTORY/pipelines/runs?limit=12");
+    const result = await readResponse(response);
+
+    if (!result.ok) {
+      setText(blogTriggerResult, formatErrorText(result, "run list load failed"));
+      return;
+    }
+
+    const items = result.data?.items || [];
+    renderBlogRuns(items);
+  } catch (error) {
+    setText(blogTriggerResult, `run list load failed: ${error.message}`);
+  }
+};
+
 if (typeof io === "function") {
   const socket = io("/monitoring", { path: "/socket.io/" });
 
   socket.on("connect", () => {
-    setText(wsStatus, "connected");
+    setWsState("connected");
     appendEvent(formatEvent("socket.connected", { message: "socket.io connected" }));
   });
 
   socket.on("disconnect", () => {
-    setText(wsStatus, "disconnected");
+    setWsState("disconnected");
     appendEvent(formatEvent("socket.disconnected", { message: "socket.io disconnected" }));
   });
 
@@ -342,10 +479,23 @@ if (typeof io === "function") {
 
   socket.on("n8n:blog_status", (payload) => {
     appendEvent(formatEvent("n8n:blog_status", payload));
+    void loadBlogRuns();
+    if (payload?.event?.runId) {
+      void loadBlogRunDetail(payload.event.runId);
+    }
+    updateRequestCount();
+  });
+
+  socket.on("n8n:blog_trigger", (payload) => {
+    appendEvent(formatEvent("n8n:blog_trigger", payload));
+    void loadBlogRuns();
+    if (payload?.runId) {
+      void loadBlogRunDetail(payload.runId);
+    }
     updateRequestCount();
   });
 } else {
-  setText(wsStatus, "socket unavailable");
+  setWsState("unavailable");
 }
 
 if (assistantForm) {
@@ -444,6 +594,82 @@ if (clearEvents) {
 if (refreshDiagnostics) {
   refreshDiagnostics.addEventListener("click", () => {
     void loadErrorDiagnostics();
+  });
+}
+
+if (blogRunList) {
+  blogRunList.addEventListener("click", (event) => {
+    const target = event.target;
+    if (!(target instanceof HTMLElement)) {
+      return;
+    }
+
+    const button = target.closest(".blog-run-item");
+    if (!(button instanceof HTMLButtonElement)) {
+      return;
+    }
+
+    const runId = button.dataset.runId;
+    if (!runId) {
+      return;
+    }
+
+    void loadBlogRunDetail(runId);
+  });
+}
+
+if (refreshBlogRuns) {
+  refreshBlogRuns.addEventListener("click", () => {
+    void loadBlogRuns();
+  });
+}
+
+if (blogTriggerForm) {
+  blogTriggerForm.addEventListener("submit", async (event) => {
+    event.preventDefault();
+
+    const topic = blogTopicInput?.value?.trim() || "";
+    const imageCountRaw = blogImageCountInput?.value?.trim() || "1";
+    const imageCount = Number.parseInt(imageCountRaw, 10);
+
+    if (!topic) {
+      setText(blogTriggerResult, "topic을 입력해 주세요.");
+      return;
+    }
+
+    setText(blogTriggerResult, "triggering...");
+
+    try {
+      const body = {
+        topic,
+        chatId: byId("chatId")?.value?.trim() || "web:dashboard",
+        imageCount: Number.isFinite(imageCount) ? imageCount : 1,
+      };
+
+      const response = await fetch("/api/modules/AI_Writer_TISTORY/pipelines/trigger", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      const result = await readResponse(response);
+
+      if (!result.ok) {
+        setText(blogTriggerResult, formatErrorText(result, "blog trigger failed"));
+        appendEvent(formatEvent("http.bad_response", { message: formatErrorText(result, "blog trigger failed"), endpoint: "/api/modules/AI_Writer_TISTORY/pipelines/trigger" }));
+        return;
+      }
+
+      const item = result.data?.item || {};
+      setText(blogTriggerResult, safeText(item.message || "triggered"));
+      await loadBlogRuns();
+      if (item.runId) {
+        await loadBlogRunDetail(item.runId);
+      }
+      updateRequestCount();
+    } catch (error) {
+      setText(blogTriggerResult, `blog trigger failed: ${error.message}`);
+      appendEvent(formatEvent("http.exception", { message: error.message, endpoint: "/api/modules/AI_Writer_TISTORY/pipelines/trigger" }));
+    }
   });
 }
 
@@ -589,3 +815,4 @@ void renderModules();
 void loadSettings();
 void loadAssistantHistory(initialChatId);
 void loadErrorDiagnostics();
+void loadBlogRuns();

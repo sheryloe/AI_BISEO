@@ -28,7 +28,8 @@ const envSchema = z.object({
   OPENAI_API_KEY: z.string().default(""),
   GOOGLE_AI_STUDIO_API_KEY: z.string().default(""),
   OPENAI_MODEL: z.string().default("gpt-4.1-mini"),
-  ASSISTANT_LLM_PROVIDER: z.enum(["none", "ollama", "gemini_cli"]).default("ollama"),
+  ASSISTANT_LLM_PROVIDER: z.enum(["none", "ollama", "gemini_cli"]).default("none"),
+  ASSISTANT_ENABLE_LLM: z.enum(["true", "false"]).default("false"),
   ASSISTANT_LLM_SYSTEM_PROMPT: z.string().default(""),
   ASSISTANT_ROUTER_MODE: z.enum(["local_rule", "hybrid"]).default("local_rule"),
   ASSISTANT_SHOW_REASONING: z.enum(["true", "false"]).default("true"),
@@ -86,6 +87,7 @@ const allowedTelegramChatIds = new Set(
 export const env = {
   ...parsedEnv,
   OLLAMA_BASE_URL: resolvedOllamaBaseUrl,
+  ASSISTANT_ENABLE_LLM: parsedEnv.ASSISTANT_ENABLE_LLM === "true",
   ASSISTANT_SHOW_REASONING: parsedEnv.ASSISTANT_SHOW_REASONING === "true",
   NOTION_LOG_ENABLED: parsedEnv.NOTION_LOG_ENABLED === "true",
   SETTINGS_UI_WRITE_ENABLED: parsedEnv.SETTINGS_UI_WRITE_ENABLED === "true",

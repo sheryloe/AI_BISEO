@@ -9,14 +9,15 @@ import {
   getTradingStatusStub,
   queryCodingHistoryStub,
   queryLedgerStub,
-  triggerBlogWorkflowStub,
 } from "../../modules/interfaces/externalModuleStubs";
+import { BlogWorkflowClient } from "../../modules/interfaces/blogWorkflowClient";
 
 interface AssistantControllerOptions {
   conversationRepository: ConversationRepository;
   ragRepository: RagRepository;
   llmService: AssistantLlmService;
   llmLogRepository: LlmLogRepository;
+  blogWorkflowClient: BlogWorkflowClient;
 }
 
 export interface AssistantMessageInput {
@@ -116,6 +117,7 @@ export class AssistantController {
     let ragCount = 0;
     let llmProvider = "none";
     let llmModel = "none";
+    let executionContext = "로컬 디스패처(Phase 1 스텁)";
 
     if (decision.route === "rag_search") {
       const ragResults = await this.options.ragRepository.searchDocuments(input.text, env.RAG_DEFAULT_LIMIT);
@@ -126,54 +128,58 @@ export class AssistantController {
         env.ASSISTANT_HISTORY_LIMIT,
       );
 
-      const systemPrompt = env.ASSISTANT_LLM_SYSTEM_PROMPT.trim() || DEFAULT_SYSTEM_PROMPT;
-      const llmMessages = [
-        { role: "system" as const, content: systemPrompt },
-        {
-          role: "user" as const,
-          content: [
-            "[사용자 요청]",
-            input.text,
-            "",
-            "[최근 대화 맥락]",
-            buildConversationContext(recentMessages, 200),
-            "",
-            "[로컬 RAG 참고 문맥]",
-            buildRagContext(ragResults),
-            "",
-            "위 맥락을 참고해 사용자 요청에 답변해 주세요.",
-          ].join("\n"),
-        },
-      ];
+      if (env.ASSISTANT_ENABLE_LLM) {
+        const systemPrompt = env.ASSISTANT_LLM_SYSTEM_PROMPT.trim() || DEFAULT_SYSTEM_PROMPT;
+        const llmMessages = [
+          { role: "system" as const, content: systemPrompt },
+          {
+            role: "user" as const,
+            content: [
+              "[사용자 요청]",
+              input.text,
+              "",
+              "[최근 대화 맥락]",
+              buildConversationContext(recentMessages, 200),
+              "",
+              "[로컬 RAG 참고 문맥]",
+              buildRagContext(ragResults),
+              "",
+              "위 맥락을 참고해 사용자 요청에 답변해 주세요.",
+            ].join("\n"),
+          },
+        ];
 
-      const llmResult = await this.options.llmService.generate({
-        sessionId,
-        chatId: input.chatId,
-        route: decision.route,
-        messages: llmMessages,
-      });
-
-      if (llmResult) {
-        replyBody = llmResult.text;
-        llmProvider = llmResult.provider;
-        llmModel = llmResult.model;
-
-        await this.options.llmLogRepository.createLog({
+        const llmResult = await this.options.llmService.generate({
           sessionId,
           chatId: input.chatId,
           route: decision.route,
-          provider: llmResult.provider,
-          model: llmResult.model,
-          prompt: llmResult.promptPreview,
-          response: llmResult.text,
-          metadata: {
-            ragCount,
-            recentMessageCount: recentMessages.length,
-          },
+          messages: llmMessages,
         });
-      } else if (ragResults.length === 0) {
+
+        if (llmResult) {
+          replyBody = llmResult.text;
+          llmProvider = llmResult.provider;
+          llmModel = llmResult.model;
+
+          await this.options.llmLogRepository.createLog({
+            sessionId,
+            chatId: input.chatId,
+            route: decision.route,
+            provider: llmResult.provider,
+            model: llmResult.model,
+            prompt: llmResult.promptPreview,
+            response: llmResult.text,
+            metadata: {
+              ragCount,
+              recentMessageCount: recentMessages.length,
+            },
+          });
+        }
+      }
+
+      if (!replyBody && ragResults.length === 0) {
         replyBody = "로컬 기억 저장소에서 관련 내용을 찾지 못했습니다. 다른 키워드로 다시 물어보거나 작업을 더 구체화해 주세요.";
-      } else {
+      } else if (!replyBody) {
         const lines = ragResults.map((item, index) => {
           const snippet = toSnippet(item.content, env.RAG_SNIPPET_MAX_CHARS);
           return `${index + 1}. [${item.source}] ${snippet}`;
@@ -185,8 +191,16 @@ export class AssistantController {
         ].join("\n");
       }
     } else if (decision.route === "call_blog") {
-      const result = await triggerBlogWorkflowStub(input.text);
+      const result = await this.options.blogWorkflowClient.trigger({
+        sessionId,
+        chatId: input.chatId,
+        username: input.username,
+        text: input.text,
+      });
       replyBody = result.message;
+      executionContext = result.status === "triggered"
+        ? "n8n Webhook 트리거(실연동)"
+        : "n8n Webhook 트리거(폴백 응답)";
     } else if (decision.route === "call_trading_status") {
       const result = await getTradingStatusStub(input.text);
       replyBody = result.message;
@@ -204,7 +218,8 @@ export class AssistantController {
       `판단 경로: ${routeLabel}`,
       `판단 근거: ${decision.reason}`,
       `RAG 매칭 건수: ${ragCount}`,
-      "함수 실행 위치: 로컬 디스패처(Phase 1 스텁)",
+      `함수 실행 위치: ${executionContext}`,
+      `LLM 사용 여부: ${env.ASSISTANT_ENABLE_LLM ? "enabled" : "disabled"}`,
       `LLM 공급자: ${llmProvider}`,
       `LLM 모델: ${llmModel}`,
     ];

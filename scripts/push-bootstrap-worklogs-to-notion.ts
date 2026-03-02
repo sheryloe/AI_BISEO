@@ -489,6 +489,88 @@ const stepRecords: StepRecord[] = [
       },
     ],
   },
+  {
+    페이지제목: "[AI_BISEO] Step 7 - 서비스 운영화(명령어/대시보드/배포 문서)",
+    블로그본문: [
+      "Step 7에서는 기능 단위 구현을 넘어 실제 운영자 기준으로 시스템을 사용할 수 있게 만드는 작업에 집중했다. 핵심은 세 가지였다. 첫째, 텔레그램에서 자연어 외에 명령어 기반 운영이 가능해야 한다. 둘째, 대시보드를 운영 화면에 맞게 가독성과 시인성 중심으로 개선해야 한다. 셋째, 신규 인원이 바로 배포할 수 있도록 README를 서비스 운영 문서로 정리해야 한다.",
+      "텔레그램 계층에는 명령어 파서를 추가해 /help, /status, /modules, /history, /blog, /pipeline, /run, /rag, /trade, /ledger, /coding, /ask 를 실제 동작으로 연결했다. 특히 /help는 단순 목록이 아니라 topic 기반 안내를 넣어 처음 보는 사용자도 바로 따라할 수 있도록 구성했다.",
+      "AI Writer 파이프라인 검증에서는 n8n 로그를 debug 레벨로 올려 실제 실패 지점을 execution 단위로 확인했다. 결과적으로 워크플로우는 Agent_Editor 단계까지 진입했고, 실패 원인은 OpenAI 브리지의 API 키 미설정임을 확인했다. 이 과정에서 입력/출력 데이터와 실행 ID를 기준으로 문제를 재현 가능한 상태로 기록했다.",
+      "웹 대시보드는 동일 기능을 유지하면서 운영 관점 UI로 재디자인했다. 타이포, 컬러 시스템, 카드 계층, 실시간 이벤트 가독성, 모바일 반응형을 정리해 실서비스 관제 화면 형태로 개선했다.",
+      "README는 기존 개발 메모형에서 서비스 운영 매뉴얼 형태로 재작성했다. 환경 변수, 실행 순서, 배포 절차, 엔드포인트, 텔레그램 명령어, 트러블슈팅, 점검 체크리스트를 한 문서에서 확인할 수 있게 구성했다.",
+      "Step 7의 결과는 '기능이 있는 코드'를 '운영 가능한 서비스'로 전환한 것이다. 남은 핵심 과제는 OpenAI 키 주입 및 모델 매핑 정책 정리, n8n 콜백 완결 경로 강화, 보안 하드닝이다.",
+    ],
+    예시코드: [
+      {
+        제목: "텔레그램 명령 파싱",
+        언어: "typescript",
+        코드: "const COMMAND_PATTERN = /^\\/([a-zA-Z0-9_]+)(?:@[a-zA-Z0-9_]+)?(?:\\s+([\\s\\S]*))?$/;",
+      },
+      {
+        제목: "명령어 실행 분기 예시",
+        언어: "typescript",
+        코드: "if (input.command === \"status\") {\n  const modules = moduleRegistry.listModules();\n  // 상태 요약 응답 생성\n}",
+      },
+      {
+        제목: "대시보드 배포 명령",
+        언어: "bash",
+        코드: "docker compose up -d --build",
+      },
+    ],
+    핵심포인트: [
+      "명령어 기반 운영 인터페이스를 추가해 Telegram UX를 표준화했다.",
+      "n8n 실행 실패를 execution ID 기준으로 재현 가능한 형태로 기록했다.",
+      "README를 서비스 운영 매뉴얼 형태로 정리해 온보딩 비용을 줄였다.",
+      "웹 대시보드를 관제 화면 중심으로 리디자인했다.",
+    ],
+    결과: [
+      "텔레그램 명령어/도움말 체계 구현 완료",
+      "n8n debug 분석으로 OpenAI 키 미설정 실패 원인 확정",
+      "대시보드 UI 리디자인 반영 완료",
+      "README 서비스 운영 문서화 완료",
+    ],
+    다음액션: [
+      "OPENAI_API_KEY 운영 주입 및 모델 매핑 fallback 정책 적용",
+      "n8n 워크플로우 콜백 경로 강화(단계별 상태 확정)",
+      "아티팩트 공개 범위/시크릿 노출 리스크 정리",
+    ],
+    할일: [
+      {
+        작업: "텔레그램 운영 명령어 구현",
+        완료: true,
+        완료일: "2026-03-02",
+        수행방법: [
+          "/help, /status, /modules, /history, /blog, /pipeline, /run 등 명령 추가",
+          "명령어 미지원 시 사용자 안내 메시지 처리",
+        ],
+      },
+      {
+        작업: "AI Writer 실행 실패 원인 추적",
+        완료: true,
+        완료일: "2026-03-02",
+        수행방법: [
+          "n8n 컨테이너 로그 레벨 debug로 재기동",
+          "execution 데이터에서 Agent_Editor 500 원인 추출",
+        ],
+      },
+      {
+        작업: "README 운영 매뉴얼화",
+        완료: true,
+        완료일: "2026-03-02",
+        수행방법: [
+          "배포/운영/명령어/트러블슈팅 섹션 재정리",
+          "실행 체크리스트 추가",
+        ],
+      },
+      {
+        작업: "OpenAI 키 주입 후 E2E 성공 경로 검증",
+        완료: false,
+        수행방법: [
+          "OPENAI_API_KEY 적용 후 /blog -> /pipeline -> /run 경로 재검증",
+          "이미지 생성 단계까지 성공 데이터 확인",
+        ],
+      },
+    ],
+  },
 ];
 
 const notionApiKey = process.env.NOTION_API_KEY?.trim() ?? "";
@@ -668,6 +750,10 @@ const findExistingChildPageId = async (parentPageId: string, title: string): Pro
         return false;
       }
 
+      if (page.archived === true || page.in_trash === true) {
+        return false;
+      }
+
       const parent = (page.parent ?? {}) as { type?: string; page_id?: string };
       if (parent.type !== "page_id" || !parent.page_id) {
         return false;
@@ -697,13 +783,14 @@ const findExistingChildPageId = async (parentPageId: string, title: string): Pro
 const clearAllChildren = async (pageId: string): Promise<void> => {
   for (let i = 0; i < 10; i += 1) {
     const list = await notion.blocks.children.list({ block_id: pageId, page_size: 100 });
-    const blocks = list.results as Array<{ id: string }>;
+    const blocks = list.results as Array<{ id: string; archived?: boolean; in_trash?: boolean }>;
+    const activeBlocks = blocks.filter((block) => !block.archived && !block.in_trash);
 
-    if (blocks.length === 0) {
+    if (activeBlocks.length === 0) {
       break;
     }
 
-    for (const block of blocks) {
+    for (const block of activeBlocks) {
       await notion.blocks.delete({ block_id: block.id });
     }
   }
