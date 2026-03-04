@@ -123,6 +123,23 @@ const readTextFromMessages = (value: unknown): string => {
   return "";
 };
 
+const parseAttachedModules = (value: unknown): string[] => {
+  if (Array.isArray(value)) {
+    return value
+      .map((item) => (typeof item === "string" ? item.trim().toLowerCase() : ""))
+      .filter(Boolean);
+  }
+
+  if (typeof value === "string" && value.trim()) {
+    return value
+      .split(",")
+      .map((token) => token.trim().toLowerCase())
+      .filter(Boolean);
+  }
+
+  return [];
+};
+
 export const createAssistantRouter = ({ controller }: AssistantRouterOptions): Router => {
   const router = Router();
 
@@ -179,6 +196,9 @@ export const createAssistantRouter = ({ controller }: AssistantRouterOptions): R
         query.prompt,
         query.input,
       ]);
+      const attachedModules = parseAttachedModules(
+        normalizedBody.attachedModules ?? query.attachedModules,
+      );
 
       if (!text) {
         res.status(422).json({
