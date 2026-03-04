@@ -79,9 +79,15 @@ export const createN8nCallbackRouter = ({
   const router = Router();
 
   router.post(env.N8N_BLOG_CALLBACK_ROUTE, async (req, res) => {
+    if (!callbackSecret.trim()) {
+      logger.error("n8n 콜백 시크릿이 설정되지 않았습니다.");
+      res.status(503).json({ ok: false, message: "N8N_BLOG_CALLBACK_SECRET is required." });
+      return;
+    }
+
     const incomingSecret = req.header(callbackSecretHeader) ?? "";
 
-    if (callbackSecret && incomingSecret !== callbackSecret) {
+    if (incomingSecret !== callbackSecret) {
       logger.warn("n8n 콜백 인증이 실패했습니다.", {
         header: callbackSecretHeader,
       });

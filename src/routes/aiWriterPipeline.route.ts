@@ -1,4 +1,4 @@
-import { Router } from "express";
+﻿import { Router } from "express";
 
 import { env } from "../core/env";
 import { AiWriterOpenAiBridge } from "../modules/ai_writer_tistory/openAiBridge";
@@ -27,11 +27,38 @@ const parseLimit = (rawLimit: unknown): number => {
 const verifyBridgeSecret = (request: { header: (name: string) => string | undefined }): boolean => {
   const configured = env.N8N_BLOG_CALLBACK_SECRET.trim();
   if (!configured) {
-    return true;
+    return false;
   }
 
   const incoming = request.header(env.N8N_CALLBACK_SECRET_HEADER) ?? "";
   return incoming === configured;
+};
+
+const ensureBridgeAuthorized = (
+  request: { header: (name: string) => string | undefined },
+  response: {
+    status: (code: number) => {
+      json: (body: { ok: boolean; message: string }) => void;
+    };
+  },
+): boolean => {
+  if (!env.N8N_BLOG_CALLBACK_SECRET.trim()) {
+    response.status(503).json({
+      ok: false,
+      message: "N8N_BLOG_CALLBACK_SECRET is required.",
+    });
+    return false;
+  }
+
+  if (!verifyBridgeSecret(request)) {
+    response.status(401).json({
+      ok: false,
+      message: "Unauthorized",
+    });
+    return false;
+  }
+
+  return true;
 };
 
 export const createAiWriterPipelineRouter = ({
@@ -42,13 +69,17 @@ export const createAiWriterPipelineRouter = ({
   const router = Router();
 
   router.post("/trigger", async (req, res) => {
+    if (!ensureBridgeAuthorized(req, res)) {
+      return;
+    }
+
     const body = (req.body ?? {}) as Record<string, unknown>;
     const topic = typeof body.topic === "string" ? body.topic.trim() : "";
 
     if (!topic) {
       res.status(422).json({
         ok: false,
-        message: "topic이 비어 있습니다.",
+        message: "topic is required.",
       });
       return;
     }
@@ -80,11 +111,7 @@ export const createAiWriterPipelineRouter = ({
   });
 
   router.post("/llm/generate", async (req, res) => {
-    if (!verifyBridgeSecret(req)) {
-      res.status(401).json({
-        ok: false,
-        message: "인증에 실패했습니다.",
-      });
+    if (!ensureBridgeAuthorized(req, res)) {
       return;
     }
 
@@ -93,7 +120,7 @@ export const createAiWriterPipelineRouter = ({
       if (!prompt.trim()) {
         res.status(422).json({
           ok: false,
-          message: "prompt가 비어 있습니다.",
+          message: "prompt is required.",
         });
         return;
       }
@@ -112,11 +139,7 @@ export const createAiWriterPipelineRouter = ({
   });
 
   router.post("/image/generate", async (req, res) => {
-    if (!verifyBridgeSecret(req)) {
-      res.status(401).json({
-        ok: false,
-        message: "인증에 실패했습니다.",
-      });
+    if (!ensureBridgeAuthorized(req, res)) {
       return;
     }
 
@@ -148,7 +171,7 @@ export const createAiWriterPipelineRouter = ({
     const run = tracker.getRun(req.params.runId);
 
     if (!run) {
-      res.status(404).json({ ok: false, message: "요청한 파이프라인 실행 이력을 찾을 수 없습니다." });
+      res.status(404).json({ ok: false, message: "run not found." });
       return;
     }
 

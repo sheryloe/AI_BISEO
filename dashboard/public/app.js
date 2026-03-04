@@ -28,14 +28,62 @@ const blogRunDetail = byId("blogRunDetail");
 const refreshBlogRuns = byId("refreshBlogRuns");
 
 const telegramBotTokenInput = byId("telegramBotTokenInput");
+const telegramAllowedChatIdsInput = byId("telegramAllowedChatIdsInput");
 const openAiApiKeyInput = byId("openAiApiKeyInput");
 const googleAiStudioApiKeyInput = byId("googleAiStudioApiKeyInput");
 const notionApiKeyInput = byId("notionApiKeyInput");
 const notionParentPageIdInput = byId("notionParentPageIdInput");
+const n8nBlogCallbackSecretInput = byId("n8nBlogCallbackSecretInput");
+const savedPipelineBridgeSecret = window.sessionStorage?.getItem("ai_biseo_pipeline_bridge_secret") || "";
 
 const state = {
   requests: 0,
+  pipelineBridgeSecret: savedPipelineBridgeSecret,
+  pipelineBridgeHeader: "X-N8N-SECRET",
 };
+
+const viewNavButtons = Array.from(document.querySelectorAll(".view-nav button[data-view]"));
+const viewPanels = Array.from(document.querySelectorAll(".view-panel[data-view]"));
+
+const setActiveView = (viewName) => {
+  for (const button of viewNavButtons) {
+    button.classList.toggle("is-active", button.dataset.view === viewName);
+  }
+
+  for (const panel of viewPanels) {
+    panel.classList.toggle("is-active", panel.dataset.view === viewName);
+  }
+
+  try {
+    window.sessionStorage?.setItem("ai_biseo_dashboard_view", viewName);
+  } catch {
+    // ignore storage errors
+  }
+};
+
+if (viewNavButtons.length > 0 && viewPanels.length > 0) {
+  let initialView = "overview";
+  try {
+    const savedView = window.sessionStorage?.getItem("ai_biseo_dashboard_view");
+    if (savedView && viewPanels.some((panel) => panel.dataset.view === savedView)) {
+      initialView = savedView;
+    }
+  } catch {
+    // ignore storage errors
+  }
+
+  setActiveView(initialView);
+
+  for (const button of viewNavButtons) {
+    button.addEventListener("click", () => {
+      const nextView = button.dataset.view;
+      if (!nextView) {
+        return;
+      }
+      setActiveView(nextView);
+    });
+  }
+}
 
 if (document?.body) {
   requestAnimationFrame(() => {
@@ -193,10 +241,12 @@ const updateRequestCount = () => {
 const setSettingsWriteEnabled = (enabled) => {
   const controls = [
     telegramBotTokenInput,
+    telegramAllowedChatIdsInput,
     openAiApiKeyInput,
     googleAiStudioApiKeyInput,
     notionApiKeyInput,
     notionParentPageIdInput,
+    n8nBlogCallbackSecretInput,
     settingsSubmitBtn,
   ];
 
@@ -646,9 +696,15 @@ if (blogTriggerForm) {
         imageCount: Number.isFinite(imageCount) ? imageCount : 1,
       };
 
+      const triggerHeaders = { "content-type": "application/json" };
+      const bridgeSecret = state.pipelineBridgeSecret || n8nBlogCallbackSecretInput?.value?.trim() || "";
+      if (bridgeSecret) {
+        triggerHeaders[state.pipelineBridgeHeader] = bridgeSecret;
+      }
+
       const response = await fetch("/api/modules/AI_Writer_TISTORY/pipelines/trigger", {
         method: "POST",
-        headers: { "content-type": "application/json" },
+        headers: triggerHeaders,
         body: JSON.stringify(body),
       });
       const result = await readResponse(response);
@@ -695,6 +751,10 @@ const loadSettings = async () => {
         telegramBotTokenInput.placeholder = data.item.telegramBotToken || "TELEGRAM_BOT_TOKEN";
       }
 
+      if (telegramAllowedChatIdsInput) {
+        telegramAllowedChatIdsInput.placeholder = data.item.telegramAllowedChatIds || "TELEGRAM_ALLOWED_CHAT_IDS";
+      }
+
       if (openAiApiKeyInput) {
         openAiApiKeyInput.placeholder = data.item.openAiApiKey || "OPENAI_API_KEY";
       }
@@ -710,6 +770,14 @@ const loadSettings = async () => {
       if (notionParentPageIdInput) {
         notionParentPageIdInput.placeholder = data.item.notionParentPageId || "NOTION_PARENT_PAGE_ID";
       }
+
+      if (n8nBlogCallbackSecretInput) {
+        n8nBlogCallbackSecretInput.placeholder = data.item.n8nBlogCallbackSecret || "N8N_BLOG_CALLBACK_SECRET";
+      }
+
+      if (typeof data.item.n8nCallbackSecretHeader === "string" && data.item.n8nCallbackSecretHeader.trim()) {
+        state.pipelineBridgeHeader = data.item.n8nCallbackSecretHeader.trim();
+      }
     }
   } catch (error) {
     const message = `settings load failed: ${error.message}`;
@@ -723,15 +791,21 @@ if (settingsForm) {
     event.preventDefault();
 
     const telegramBotToken = telegramBotTokenInput?.value?.trim() || "";
+    const telegramAllowedChatIds = telegramAllowedChatIdsInput?.value?.trim() || "";
     const openAiApiKey = openAiApiKeyInput?.value?.trim() || "";
     const googleAiStudioApiKey = googleAiStudioApiKeyInput?.value?.trim() || "";
     const notionApiKey = notionApiKeyInput?.value?.trim() || "";
     const notionParentPageId = notionParentPageIdInput?.value?.trim() || "";
+    const n8nBlogCallbackSecret = n8nBlogCallbackSecretInput?.value?.trim() || "";
 
     const payload = {};
 
     if (telegramBotToken) {
       payload.telegramBotToken = telegramBotToken;
+    }
+
+    if (telegramAllowedChatIds) {
+      payload.telegramAllowedChatIds = telegramAllowedChatIds;
     }
 
     if (openAiApiKey) {
@@ -748,6 +822,12 @@ if (settingsForm) {
 
     if (notionParentPageId) {
       payload.notionParentPageId = notionParentPageId;
+    }
+
+    if (n8nBlogCallbackSecret) {
+      payload.n8nBlogCallbackSecret = n8nBlogCallbackSecret;
+      state.pipelineBridgeSecret = n8nBlogCallbackSecret;
+      window.sessionStorage?.setItem("ai_biseo_pipeline_bridge_secret", n8nBlogCallbackSecret);
     }
 
     if (Object.keys(payload).length === 0) {
@@ -774,6 +854,10 @@ if (settingsForm) {
           telegramBotTokenInput.value = "";
         }
 
+        if (telegramAllowedChatIdsInput && telegramAllowedChatIds) {
+          telegramAllowedChatIdsInput.value = "";
+        }
+
         if (openAiApiKeyInput && openAiApiKey) {
           openAiApiKeyInput.value = "";
         }
@@ -788,6 +872,10 @@ if (settingsForm) {
 
         if (notionParentPageIdInput && notionParentPageId) {
           notionParentPageIdInput.value = "";
+        }
+
+        if (n8nBlogCallbackSecretInput && n8nBlogCallbackSecret) {
+          n8nBlogCallbackSecretInput.value = "";
         }
 
         await loadSettings();

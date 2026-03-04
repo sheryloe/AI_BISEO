@@ -107,6 +107,8 @@ export const env = {
 
 export type RuntimeMutableEnvKey =
   | "TELEGRAM_BOT_TOKEN"
+  | "TELEGRAM_ALLOWED_CHAT_IDS"
+  | "N8N_BLOG_CALLBACK_SECRET"
   | "OPENAI_API_KEY"
   | "GOOGLE_AI_STUDIO_API_KEY"
   | "NOTION_API_KEY"
@@ -137,6 +139,20 @@ export const applyRuntimeEnvPatch = (patch: Partial<Record<RuntimeMutableEnvKey,
 
     if (key === "TELEGRAM_BOT_TOKEN") {
       env.TELEGRAM_BOT_TOKEN = value;
+      continue;
+    }
+
+    if (key === "TELEGRAM_ALLOWED_CHAT_IDS") {
+      env.TELEGRAM_ALLOWED_CHAT_IDS = value;
+      env.allowedTelegramChatIds.clear();
+      for (const chatId of value.split(",").map((item) => item.trim()).filter(Boolean)) {
+        env.allowedTelegramChatIds.add(chatId);
+      }
+      continue;
+    }
+
+    if (key === "N8N_BLOG_CALLBACK_SECRET") {
+      env.N8N_BLOG_CALLBACK_SECRET = value;
       continue;
     }
 

@@ -76,6 +76,9 @@ const main = (): void => {
   const bridgeBaseUrl = process.env.AI_BISEO_BRIDGE_BASE_URL?.trim() || "http://host.docker.internal:3010";
   const headerName = process.env.N8N_CALLBACK_SECRET_HEADER?.trim() || "X-N8N-SECRET";
   const secret = process.env.N8N_BLOG_CALLBACK_SECRET?.trim() || "";
+  if (!secret) {
+    throw new Error("N8N_BLOG_CALLBACK_SECRET is required.");
+  }
 
   const workflowId = pickWorkflowId(containerName);
   const tempInContainer = `/tmp/ai_writer_${workflowId}_patch_src.json`;

@@ -37,7 +37,7 @@ interface TelegramIntegrationOptions {
 
 const isAllowedChat = (chatId: string): boolean => {
   if (env.allowedTelegramChatIds.size === 0) {
-    return true;
+    return false;
   }
 
   return env.allowedTelegramChatIds.has(chatId);
@@ -152,6 +152,10 @@ export const initializeTelegramIntegration = async ({
     return;
   }
 
+  if (env.allowedTelegramChatIds.size === 0) {
+    logger.warn("TELEGRAM_ALLOWED_CHAT_IDS가 비어 있어 모든 채팅 요청을 차단합니다.");
+  }
+
   const bot = new Telegraf(env.TELEGRAM_BOT_TOKEN);
 
   bot.catch((error) => {
@@ -164,7 +168,7 @@ export const initializeTelegramIntegration = async ({
     const chatId = String(ctx.chat.id);
 
     if (!isAllowedChat(chatId)) {
-      await ctx.reply("이 채팅은 현재 비서 사용 허용 목록에 없습니다.");
+      await ctx.reply("이 채팅은 허용 목록에 없습니다. TELEGRAM_ALLOWED_CHAT_IDS를 확인해 주세요.");
       return;
     }
 
@@ -182,7 +186,7 @@ export const initializeTelegramIntegration = async ({
     const chatId = String(ctx.chat.id);
 
     if (!isAllowedChat(chatId)) {
-      await ctx.reply("이 채팅은 현재 비서 사용 허용 목록에 없습니다.");
+      await ctx.reply("이 채팅은 허용 목록에 없습니다. TELEGRAM_ALLOWED_CHAT_IDS를 확인해 주세요.");
       return;
     }
 

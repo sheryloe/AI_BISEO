@@ -22,7 +22,7 @@ services:
       OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-http://host.docker.internal:11434}
       SQLITE_DB_PATH: ${SQLITE_DB_PATH:-./storage/sqlite/ai_biseo.db}
     ports:
-      - "${APP_PORT:-3000}:3000"
+      - "127.0.0.1:${APP_PORT:-3000}:${APP_PORT:-3000}"
     extra_hosts:
       - "host.docker.internal:host-gateway"
     volumes:

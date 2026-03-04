@@ -123,10 +123,12 @@ const SENSITIVE_REQUEST_KEYS = new Set([
   "googleAiStudioApiKey",
   "notionApiKey",
   "notionParentPageId",
+  "n8nBlogCallbackSecret",
   "OPENAI_API_KEY",
   "GOOGLE_AI_STUDIO_API_KEY",
   "NOTION_API_KEY",
   "NOTION_PARENT_PAGE_ID",
+  "N8N_BLOG_CALLBACK_SECRET",
   "TELEGRAM_BOT_TOKEN",
 ]);
 

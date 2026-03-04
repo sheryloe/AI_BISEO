@@ -109,6 +109,7 @@ export class BlogWorkflowClient {
 
   public async trigger(input: BlogWorkflowTriggerInput): Promise<BlogWorkflowTriggerResult> {
     const webhookUrl = parseWebhookUrl(env.N8N_BLOG_TRIGGER_WEBHOOK_URL);
+    const callbackSecret = env.N8N_BLOG_CALLBACK_SECRET.trim();
 
     if (!webhookUrl) {
       const message = "블로그 자동화 웹훅이 설정되지 않았습니다. N8N_BLOG_TRIGGER_WEBHOOK_URL을 설정해 주세요.";
@@ -130,6 +131,30 @@ export class BlogWorkflowClient {
         moduleId: "AI_Writer_TISTORY",
         action: "trigger_blog_workflow",
         status: "skipped",
+        message,
+      };
+    }
+
+    if (!callbackSecret) {
+      const message = "N8N_BLOG_CALLBACK_SECRET is not configured.";
+
+      await this.markModuleStatus(false, "trigger_blocked", "N8N_BLOG_CALLBACK_SECRET is missing");
+      await this.appendModuleHistory({
+        action: "trigger_blog_workflow_blocked",
+        input: {
+          chatId: input.chatId,
+          username: input.username,
+          text: input.text,
+        },
+        output: {
+          reason: "N8N_BLOG_CALLBACK_SECRET is missing",
+        },
+      });
+
+      return {
+        moduleId: "AI_Writer_TISTORY",
+        action: "trigger_blog_workflow",
+        status: "failed",
         message,
       };
     }
@@ -175,11 +200,8 @@ export class BlogWorkflowClient {
 
     const headers: Record<string, string> = {
       "content-type": "application/json",
+      [env.N8N_CALLBACK_SECRET_HEADER]: callbackSecret,
     };
-
-    if (env.N8N_BLOG_CALLBACK_SECRET) {
-      headers[env.N8N_CALLBACK_SECRET_HEADER] = env.N8N_BLOG_CALLBACK_SECRET;
-    }
 
     try {
       const response = await axios.post(

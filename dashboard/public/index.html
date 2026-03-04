@@ -1,187 +1,223 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="ko">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>AI_BISEO Assistant Console</title>
+  <title>AI_BISEO Control Center</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link
-    href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Manrope:wght@400;500;700&family=Noto+Sans+KR:wght@400;500;700&family=Sora:wght@500;700&display=swap"
-    rel="stylesheet"
-  />
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Manrope:wght@400;500;700&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/dashboard/styles.css" />
 </head>
 <body>
-  <div class="atmo atmo-a" aria-hidden="true"></div>
-  <div class="atmo atmo-b" aria-hidden="true"></div>
-  <div class="noise" aria-hidden="true"></div>
+  <div class="bg-orb bg-orb-a" aria-hidden="true"></div>
+  <div class="bg-orb bg-orb-b" aria-hidden="true"></div>
 
-  <div class="layout">
-    <header class="hero reveal" style="--delay: 0.05s;">
-      <div class="hero-title-wrap">
-        <p class="eyebrow">AI_BISEO Neural Desk</p>
-        <h1>메인 AI 비서 오퍼레이션 콘솔</h1>
-        <p class="hero-copy">
-          텔레그램 I/O, 로컬 RAG, 모듈 라우팅 상태를 한 화면에서 점검하는 실시간 관제 UI입니다.
-        </p>
-        <div class="hero-flags">
-          <span>Live Socket</span>
-          <span>RAG Assisted</span>
-          <span>n8n Pipeline</span>
-        </div>
+  <div class="app-shell">
+    <aside class="sidebar card">
+      <div class="brand">
+        <p class="brand-overline">AI_BISEO</p>
+        <h1>Control Center</h1>
+        <p class="brand-copy">기능별 화면으로 분리된 운영 대시보드</p>
       </div>
-      <div class="status-rail">
-        <article class="status-chip" id="wsChip" data-state="connecting">
-          <h2>WebSocket</h2>
-          <p id="wsStatus">connecting...</p>
-        </article>
-        <article class="status-chip">
-          <h2>Last Route</h2>
-          <p id="lastRoute">-</p>
-        </article>
-        <article class="status-chip">
-          <h2>Last Event</h2>
-          <p id="lastEvent">-</p>
-        </article>
+
+      <nav class="view-nav" aria-label="Dashboard Sections">
+        <button type="button" data-view="overview" class="is-active">Overview</button>
+        <button type="button" data-view="assistant">Assistant</button>
+        <button type="button" data-view="pipeline">Pipeline</button>
+        <button type="button" data-view="settings">Settings</button>
+        <button type="button" data-view="diagnostics">Diagnostics</button>
+        <button type="button" data-view="events">Events</button>
+      </nav>
+
+      <div class="sidebar-foot mono">
+        <div>URL: <b>/dashboard</b></div>
+        <div>Mode: <b>Local Ops</b></div>
       </div>
-    </header>
+    </aside>
 
-    <main class="workspace">
-      <section id="assistant" class="card assistant-card reveal" style="--delay: 0.12s;">
-        <div class="section-headline">
-          <h2>Assistant Sandbox</h2>
-          <p class="section-help">라우터와 RAG 분기 결과를 실제 질의로 빠르게 검증합니다.</p>
+    <main class="main-stage">
+      <header class="topbar card">
+        <div>
+          <p class="eyebrow">Live Status</p>
+          <h2>Runtime Snapshot</h2>
         </div>
-
-        <form id="assistantForm" class="assistant-form">
-          <div class="row">
-            <label>
-              Chat ID
-              <input type="text" id="chatId" value="web:test-user" />
-            </label>
-            <button type="submit">Send</button>
-          </div>
-
-          <label>
-            Message
-            <textarea id="assistantText" rows="4" placeholder="예: 오늘 우선순위 업무를 정리해줘"></textarea>
-          </label>
-
-          <div class="quick-prompts" id="quickPrompts">
-            <button type="button" data-prompt="오늘 일정 우선순위 정리해줘">일정 정리</button>
-            <button type="button" data-prompt="최근 코딩 변경 이력 요약해줘">코딩 이력</button>
-            <button type="button" data-prompt="이번 주 소비 패턴 분석해줘">가계부 분석</button>
-            <button type="button" data-prompt="티스토리 블로그 글 작성해줘: 2026년 상반기 AI 자동화 트렌드">블로그 작성</button>
-          </div>
-        </form>
-
-        <div class="assistant-panels">
-          <article class="panel">
-            <h3>Assistant Result</h3>
-            <pre id="assistantResult">아직 응답이 없습니다.</pre>
+        <div class="status-grid">
+          <article class="status-chip" id="wsChip" data-state="connecting">
+            <h3>WebSocket</h3>
+            <p id="wsStatus">connecting...</p>
           </article>
-
-          <article class="panel">
-            <h3>Recent Chat History</h3>
-            <ul id="assistantHistory" class="chat-history"></ul>
+          <article class="status-chip">
+            <h3>Last Route</h3>
+            <p id="lastRoute">-</p>
+          </article>
+          <article class="status-chip">
+            <h3>Last Event</h3>
+            <p id="lastEvent">-</p>
           </article>
         </div>
-      </section>
+      </header>
 
-      <aside class="side-stack">
-        <section id="overview" class="card reveal" style="--delay: 0.16s;">
-          <h2>Service Overview</h2>
-          <div class="stats">
-            <article>
-              <h3>Health</h3>
-              <p id="healthText">checking...</p>
-            </article>
-            <article>
-              <h3>Request Count</h3>
-              <p id="requestCount">0</p>
-            </article>
+      <section class="view-stack">
+        <section class="view-panel is-active" data-view="overview">
+          <div class="grid-two">
+            <section id="overview" class="card">
+              <h2>Service Overview</h2>
+              <p class="section-help">기본 상태와 요청 카운트를 빠르게 확인합니다.</p>
+              <div class="stats">
+                <article>
+                  <h3>Health</h3>
+                  <p id="healthText">checking...</p>
+                </article>
+                <article>
+                  <h3>Request Count</h3>
+                  <p id="requestCount">0</p>
+                </article>
+              </div>
+            </section>
+
+            <section id="modules" class="card">
+              <div class="section-head">
+                <h2>Module Status</h2>
+                <button id="refreshModules" type="button">Refresh</button>
+              </div>
+              <div id="moduleList" class="module-list">loading...</div>
+            </section>
           </div>
         </section>
 
-        <section id="modules" class="card reveal" style="--delay: 0.2s;">
-          <div class="section-head">
-            <h2>Module Status</h2>
-            <button id="refreshModules" type="button">Refresh</button>
-          </div>
-          <div id="moduleList" class="module-list">loading...</div>
-        </section>
-
-        <section id="settings" class="card reveal" style="--delay: 0.24s;">
-          <h2>Main Settings</h2>
-          <p class="section-help">민감 정보는 운영에서 Secret Manager 사용을 권장합니다.</p>
-          <form id="settingsForm" class="settings-form">
-            <label>
-              Telegram Bot Token
-              <input type="password" id="telegramBotTokenInput" placeholder="TELEGRAM_BOT_TOKEN" />
-            </label>
-            <label>
-              OpenAI API Key
-              <input type="password" id="openAiApiKeyInput" placeholder="OPENAI_API_KEY" />
-            </label>
-            <label>
-              Google AI Studio API Key
-              <input type="password" id="googleAiStudioApiKeyInput" placeholder="GOOGLE_AI_STUDIO_API_KEY" />
-            </label>
-            <label>
-              Notion API Key
-              <input type="password" id="notionApiKeyInput" placeholder="NOTION_API_KEY" />
-            </label>
-            <label>
-              Notion Parent Page ID
-              <input type="password" id="notionParentPageIdInput" placeholder="NOTION_PARENT_PAGE_ID" />
-            </label>
-            <button id="settingsSubmitBtn" type="submit">Save Settings</button>
-            <p id="settingsResult">대기 중</p>
-          </form>
-        </section>
-
-        <section id="blogPipeline" class="card reveal" style="--delay: 0.28s;">
-          <div class="section-head">
-            <h2>AI Writer Pipeline</h2>
-            <button id="refreshBlogRuns" type="button">Load Runs</button>
-          </div>
-          <form id="blogTriggerForm" class="settings-form">
-            <label>
-              Topic
-              <textarea id="blogTopicInput" rows="3" placeholder="예: 2026년 상반기 AI 자동화 트렌드"></textarea>
-            </label>
-            <div class="row">
-              <label>
-                Image Count
-                <input type="number" id="blogImageCountInput" value="1" min="1" max="3" />
-              </label>
-              <button id="blogTriggerBtn" type="submit">Trigger</button>
+        <section class="view-panel" data-view="assistant">
+          <section id="assistant" class="card">
+            <div class="section-headline">
+              <h2>Assistant Sandbox</h2>
+              <p class="section-help">질문/명령 라우팅 결과를 실시간으로 테스트합니다.</p>
             </div>
-            <p id="blogTriggerResult">대기 중</p>
-          </form>
-          <div class="blog-run-wrap">
-            <ul id="blogRunList" class="blog-run-list"></ul>
-            <pre id="blogRunDetail">run 상세를 선택해 주세요.</pre>
-          </div>
+
+            <form id="assistantForm" class="assistant-form">
+              <div class="row">
+                <label>
+                  Chat ID
+                  <input type="text" id="chatId" value="web:test-user" />
+                </label>
+                <button type="submit">Send</button>
+              </div>
+
+              <label>
+                Message
+                <textarea id="assistantText" rows="5" placeholder="예: 오늘 우선순위 정리해줘"></textarea>
+              </label>
+
+              <div class="quick-prompts" id="quickPrompts">
+                <button type="button" data-prompt="오늘 우선순위 일정 정리해줘">일정 정리</button>
+                <button type="button" data-prompt="최근 코딩 변경 이력 요약해줘">코딩 이력</button>
+                <button type="button" data-prompt="이번 달 지출 요약 보여줘">가계부 요약</button>
+                <button type="button" data-prompt="티스토리 블로그 글 작성해줘: 2026년 임시 공휴일">블로그 작성</button>
+              </div>
+            </form>
+
+            <div class="assistant-panels">
+              <article class="panel">
+                <h3>Assistant Result</h3>
+                <pre id="assistantResult">응답을 기다리는 중입니다.</pre>
+              </article>
+
+              <article class="panel">
+                <h3>Recent Chat History</h3>
+                <ul id="assistantHistory" class="chat-history"></ul>
+              </article>
+            </div>
+          </section>
         </section>
 
-        <section id="events" class="card reveal" style="--delay: 0.32s;">
-          <div class="section-head">
-            <h2>Realtime Events</h2>
-            <button id="clearEvents" type="button">Clear</button>
-          </div>
-          <ul id="eventLog" class="event-log"></ul>
+        <section class="view-panel" data-view="pipeline">
+          <section id="blogPipeline" class="card">
+            <div class="section-head">
+              <h2>AI Writer Pipeline</h2>
+              <button id="refreshBlogRuns" type="button">Load Runs</button>
+            </div>
+
+            <form id="blogTriggerForm" class="settings-form">
+              <label>
+                Topic
+                <textarea id="blogTopicInput" rows="4" placeholder="예: 2026년 임시 공휴일"></textarea>
+              </label>
+              <div class="row">
+                <label>
+                  Image Count
+                  <input type="number" id="blogImageCountInput" value="1" min="1" max="3" />
+                </label>
+                <button id="blogTriggerBtn" type="submit">Trigger</button>
+              </div>
+              <p id="blogTriggerResult">대기 중</p>
+            </form>
+
+            <div class="blog-run-wrap">
+              <ul id="blogRunList" class="blog-run-list"></ul>
+              <pre id="blogRunDetail">run 상세를 선택해 주세요.</pre>
+            </div>
+          </section>
         </section>
 
-        <section id="diagnostics" class="card reveal" style="--delay: 0.36s;">
-          <div class="section-head">
-            <h2>HTTP Error Diagnostics</h2>
-            <button id="refreshDiagnostics" type="button">Load Last Errors</button>
-          </div>
-          <pre id="diagnosticResult">대기 중</pre>
+        <section class="view-panel" data-view="settings">
+          <section id="settings" class="card">
+            <h2>Main Settings</h2>
+            <p class="section-help">민감 정보는 저장 후 입력 칸이 초기화됩니다.</p>
+
+            <form id="settingsForm" class="settings-form">
+              <label>
+                Telegram Bot Token
+                <input type="password" id="telegramBotTokenInput" placeholder="TELEGRAM_BOT_TOKEN" />
+              </label>
+              <label>
+                Telegram Allowed Chat IDs
+                <input type="text" id="telegramAllowedChatIdsInput" placeholder="TELEGRAM_ALLOWED_CHAT_IDS (comma-separated)" />
+              </label>
+              <label>
+                OpenAI API Key
+                <input type="password" id="openAiApiKeyInput" placeholder="OPENAI_API_KEY" />
+              </label>
+              <label>
+                Google AI Studio API Key
+                <input type="password" id="googleAiStudioApiKeyInput" placeholder="GOOGLE_AI_STUDIO_API_KEY" />
+              </label>
+              <label>
+                Notion API Key
+                <input type="password" id="notionApiKeyInput" placeholder="NOTION_API_KEY" />
+              </label>
+              <label>
+                Notion Parent Page ID
+                <input type="password" id="notionParentPageIdInput" placeholder="NOTION_PARENT_PAGE_ID" />
+              </label>
+              <label>
+                n8n Callback Secret
+                <input type="password" id="n8nBlogCallbackSecretInput" placeholder="N8N_BLOG_CALLBACK_SECRET" />
+              </label>
+              <button id="settingsSubmitBtn" type="submit">Save Settings</button>
+              <p id="settingsResult">대기 중</p>
+            </form>
+          </section>
         </section>
-      </aside>
+
+        <section class="view-panel" data-view="diagnostics">
+          <section id="diagnostics" class="card">
+            <div class="section-head">
+              <h2>HTTP Error Diagnostics</h2>
+              <button id="refreshDiagnostics" type="button">Load Last Errors</button>
+            </div>
+            <pre id="diagnosticResult">대기 중</pre>
+          </section>
+        </section>
+
+        <section class="view-panel" data-view="events">
+          <section id="events" class="card">
+            <div class="section-head">
+              <h2>Realtime Events</h2>
+              <button id="clearEvents" type="button">Clear</button>
+            </div>
+            <ul id="eventLog" class="event-log"></ul>
+          </section>
+        </section>
+      </section>
     </main>
   </div>
 
