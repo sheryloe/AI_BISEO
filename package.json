@@ -18,7 +18,9 @@
     "docker:down": "docker compose down",
     "docker:logs": "docker compose logs -f ai_biseo_server",
     "notion:push:bootstrap": "npm run notion:push:workspace",
-    "notion:push:workspace": "tsx scripts/push-bootstrap-worklogs-to-notion.ts"
+    "notion:push:workspace": "tsx scripts/push-bootstrap-worklogs-to-notion.ts",
+    "notion:push:daily": "tsx scripts/push-daily-status-to-notion.ts",
+    "ops:check": "tsx scripts/ops-policy-check.ts"
   },
   "dependencies": {
     "@notionhq/client": "^2.3.0",

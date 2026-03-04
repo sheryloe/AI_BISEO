@@ -11,6 +11,11 @@ dist/
 
 # Logs
 logs/*.log
+prompt_log/*.jsonl
+
+# Local certificates (track only runtime trust cert)
+certs/*
+!certs/eprism.crt
 
 # Runtime data
 storage/sqlite/*.db

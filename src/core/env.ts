@@ -50,6 +50,14 @@ const envSchema = z.object({
   SQLITE_VEC_EXTENSION_PATH: z.string().default(""),
 
   LOG_LEVEL: z.enum(["debug", "info", "warn", "error"]).default("info"),
+  LOG_DIR: z.string().default("./logs"),
+  LOG_TO_FILE: z.enum(["true", "false"]).default("false"),
+  LOG_HTTP_VERBOSE: z.enum(["true", "false"]).default("false"),
+  LOG_BODY_MAX_CHARS: z.coerce.number().int().positive().default(4000),
+  LOG_HTTP_HISTORY_LIMIT: z.coerce.number().int().positive().default(200),
+  PROMPT_LOG_ENABLED: z.enum(["true", "false"]).default("true"),
+  PROMPT_LOG_DIR: z.string().default("./prompt_log"),
+  TZ: z.string().default("Asia/Seoul"),
 
   SETTINGS_UI_WRITE_ENABLED: z.string().default(process.env.NODE_ENV === "production" ? "false" : "true"),
 });
@@ -92,6 +100,9 @@ export const env = {
   NOTION_LOG_ENABLED: parsedEnv.NOTION_LOG_ENABLED === "true",
   SETTINGS_UI_WRITE_ENABLED: parsedEnv.SETTINGS_UI_WRITE_ENABLED === "true",
   allowedTelegramChatIds,
+  LOG_TO_FILE: parsedEnv.LOG_TO_FILE === "true",
+  LOG_HTTP_VERBOSE: parsedEnv.LOG_HTTP_VERBOSE === "true",
+  PROMPT_LOG_ENABLED: parsedEnv.PROMPT_LOG_ENABLED === "true",
 };
 
 export type RuntimeMutableEnvKey =

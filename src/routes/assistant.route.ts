@@ -1,6 +1,7 @@
 ﻿import { Router } from "express";
 
 import { AssistantController } from "../core/orchestrator/assistantController";
+import { appendPromptLog } from "../core/promptLog";
 
 interface AssistantRouterOptions {
   controller: AssistantController;
@@ -189,6 +190,14 @@ export const createAssistantRouter = ({ controller }: AssistantRouterOptions): R
         });
         return;
       }
+
+      await appendPromptLog({
+        source: "web_route",
+        chatId,
+        username: pickFirstString([normalizedBody.username]) || undefined,
+        text,
+        attachedModules,
+      });
 
       const result = await controller.handleTelegramText({
         chatId,

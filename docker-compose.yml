@@ -18,6 +18,7 @@ services:
       CORS_ORIGIN: ${CORS_ORIGIN:-*}
       ASSISTANT_ENABLE_LLM: ${ASSISTANT_ENABLE_LLM:-false}
       ASSISTANT_LLM_PROVIDER: ${ASSISTANT_LLM_PROVIDER:-none}
+      NODE_EXTRA_CA_CERTS: /etc/ssl/certs/ca-certificates.crt
       OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-http://host.docker.internal:11434}
       SQLITE_DB_PATH: ${SQLITE_DB_PATH:-./storage/sqlite/ai_biseo.db}
     ports:

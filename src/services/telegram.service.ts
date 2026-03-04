@@ -4,6 +4,7 @@ import { message } from "telegraf/filters";
 
 import { env } from "../core/env";
 import { logger } from "../core/logger";
+import { appendPromptLog } from "../core/promptLog";
 
 export interface TelegramTextMessageInput {
   chatId: string;
@@ -187,6 +188,13 @@ export const initializeTelegramIntegration = async ({
 
     const incomingText = ctx.message.text;
 
+    await appendPromptLog({
+      source: "telegram",
+      chatId,
+      username: ctx.from?.username,
+      text: incomingText,
+    });
+
     const parsedCommand = parseCommand(incomingText);
     if (parsedCommand) {
       let commandResponse: TelegramTextMessageOutput | null = null;
@@ -299,9 +307,16 @@ export const initializeTelegramIntegration = async ({
   const pollingRequired = env.TELEGRAM_MODE === "polling" || (env.TELEGRAM_MODE === "both" && !webhookActive);
 
   if (pollingRequired) {
-    await bot.launch({ dropPendingUpdates: true });
-
-    logger.info("텔레그램 Polling 모드를 활성화했습니다.");
+    logger.info("텔레그램 Polling 시작을 요청했습니다.");
+    void bot.launch({ dropPendingUpdates: true })
+      .then(() => {
+        logger.info("텔레그램 Polling 모드를 활성화했습니다.");
+      })
+      .catch((error) => {
+        logger.error("텔레그램 Polling 시작에 실패했습니다.", {
+          error: error instanceof Error ? error.message : String(error),
+        });
+      });
   }
 
   if (env.TELEGRAM_MODE === "both" && webhookActive) {
