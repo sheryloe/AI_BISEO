@@ -3,13 +3,13 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Overview</title>
+  <title>Assistant</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;700&family=JetBrains+Mono:wght@400;500&family=Sora:wght@500;700;800&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/dashboard/styles.css" />
 </head>
-<body data-page="overview">
+<body data-page="assistant">
   <button id="mobileNavToggle" class="mobile-nav-toggle" type="button" aria-label="메뉴 열기" aria-controls="sidebarNav" aria-expanded="false">
     <span></span>
     <span></span>
@@ -50,7 +50,7 @@
       <header class="topbar card">
         <div class="topbar-title">
           <p class="eyebrow">Live Runtime</p>
-          <h2>Overview</h2>
+          <h2>Assistant</h2>
         </div>
         <div class="status-grid">
           <article class="status-chip" id="wsChip" data-state="connecting">
@@ -68,28 +68,45 @@
         </div>
       </header>
 
-      <section class="content-grid two-col">
-  <section id="overview" class="panel card">
-    <h2>Service Overview</h2>
-    <p class="section-help">서버 상태와 요청 수를 확인합니다.</p>
-    <div class="stats-grid">
-      <article>
-        <h3>Health</h3>
-        <p id="healthText">checking...</p>
-      </article>
-      <article>
-        <h3>Request Count</h3>
-        <p id="requestCount">0</p>
-      </article>
+      <section class="content-grid one-col">
+  <section id="assistant" class="panel card">
+    <div class="section-headline">
+      <h2>Assistant Sandbox</h2>
+      <p class="section-help">질문을 보내고 라우팅 결과를 확인합니다.</p>
     </div>
-  </section>
 
-  <section id="modules" class="panel card">
-    <div class="section-head">
-      <h2>Module Status</h2>
-      <button id="refreshModules" type="button">Refresh</button>
+    <form id="assistantForm" class="assistant-form">
+      <div class="row">
+        <label>
+          Chat ID
+          <input type="text" id="chatId" value="web:test-user" />
+        </label>
+        <button type="submit">Send</button>
+      </div>
+
+      <label>
+        Message
+        <textarea id="assistantText" rows="5" placeholder="예: 오늘 할 일 우선순위 정리해줘"></textarea>
+      </label>
+
+      <div class="quick-prompts" id="quickPrompts">
+        <button type="button" data-prompt="오늘 할 일 우선순위 정리해줘">일정 정리</button>
+        <button type="button" data-prompt="최근 코딩 변경 이력 요약해줘">코딩 이력</button>
+        <button type="button" data-prompt="이번 달 지출 요약해줘">가계부 요약</button>
+        <button type="button" data-prompt="티스토리 블로그 글 작성해줘: 2026년 임시 공휴일">블로그 작성</button>
+      </div>
+    </form>
+
+    <div class="split-grid">
+      <article class="sub-panel">
+        <h3>Assistant Result</h3>
+        <pre id="assistantResult">응답 대기 중</pre>
+      </article>
+      <article class="sub-panel">
+        <h3>Recent Chat History</h3>
+        <ul id="assistantHistory" class="chat-history"></ul>
+      </article>
     </div>
-    <div id="moduleList" class="module-list">loading...</div>
   </section>
 </section>
     </main>

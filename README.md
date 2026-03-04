@@ -1,4 +1,4 @@
-﻿# AI_BISEO (초등학생도 따라하는 사용법)
+# AI_BISEO (초등학생도 따라하는 사용법)
 
 AI_BISEO는 **AI 비서 + 블로그 자동화**를 한 번에 관리하는 도구예요.
 
@@ -46,7 +46,12 @@ npm run docker:logs
 
 현재 기본 주소(로컬 PC 기준):
 
-- 대시보드: `http://127.0.0.1:3010/dashboard`
+- 대시보드(Overview): `http://127.0.0.1:3010/dashboard`
+- 대시보드(Assistant): `http://127.0.0.1:3010/dashboard/assistant.html`
+- 대시보드(Pipeline): `http://127.0.0.1:3010/dashboard/pipeline.html`
+- 대시보드(Settings): `http://127.0.0.1:3010/dashboard/settings.html`
+- 대시보드(Diagnostics): `http://127.0.0.1:3010/dashboard/diagnostics.html`
+- 대시보드(Events): `http://127.0.0.1:3010/dashboard/events.html`
 - 서버 상태: `http://127.0.0.1:3010/health`
 - 설정 API: `http://127.0.0.1:3010/api/settings/env`
 
@@ -80,6 +85,8 @@ n8n 주소:
 2. Topic 입력
 3. `Trigger` 클릭
 4. Run 목록과 상세 로그 확인
+
+모바일에서는 왼쪽 위 `MENU` 버튼으로 사이드 메뉴를 열 수 있어요.
 
 ---
 
@@ -123,6 +130,7 @@ npm run notion:push:workspace
 1. 진짜 API 키는 Git에 올리지 않기
 2. 시크릿 값은 주기적으로 바꾸기
 3. 외부 공개 서버로 열 때는 인증/방화벽 설정 꼭 하기
+4. 한글 깨짐 방지를 위해 문서/코드는 UTF-8로 저장하기
 
 ---
 

@@ -1,4 +1,4 @@
-﻿const byId = (id) => document.getElementById(id);
+const byId = (id) => document.getElementById(id);
 
 const healthText = byId("healthText");
 const requestCount = byId("requestCount");
@@ -26,6 +26,9 @@ const blogTriggerResult = byId("blogTriggerResult");
 const blogRunList = byId("blogRunList");
 const blogRunDetail = byId("blogRunDetail");
 const refreshBlogRuns = byId("refreshBlogRuns");
+const mobileNavToggle = byId("mobileNavToggle");
+const mobileNavClose = byId("mobileNavClose");
+const mobileNavBackdrop = byId("mobileNavBackdrop");
 
 const telegramBotTokenInput = byId("telegramBotTokenInput");
 const telegramAllowedChatIdsInput = byId("telegramAllowedChatIdsInput");
@@ -42,48 +45,70 @@ const state = {
   pipelineBridgeHeader: "X-N8N-SECRET",
 };
 
-const viewNavButtons = Array.from(document.querySelectorAll(".view-nav button[data-view]"));
-const viewPanels = Array.from(document.querySelectorAll(".view-panel[data-view]"));
+const currentPage = document.body?.dataset?.page || "";
+const sideNavLinks = Array.from(document.querySelectorAll(".side-nav .nav-link[data-page]"));
 
-const setActiveView = (viewName) => {
-  for (const button of viewNavButtons) {
-    button.classList.toggle("is-active", button.dataset.view === viewName);
-  }
-
-  for (const panel of viewPanels) {
-    panel.classList.toggle("is-active", panel.dataset.view === viewName);
-  }
-
-  try {
-    window.sessionStorage?.setItem("ai_biseo_dashboard_view", viewName);
-  } catch {
-    // ignore storage errors
+const setActiveNav = (pageName) => {
+  for (const link of sideNavLinks) {
+    const isActive = link.dataset.page === pageName;
+    link.classList.toggle("is-active", isActive);
+    if (isActive) {
+      link.setAttribute("aria-current", "page");
+    } else {
+      link.removeAttribute("aria-current");
+    }
   }
 };
 
-if (viewNavButtons.length > 0 && viewPanels.length > 0) {
-  let initialView = "overview";
-  try {
-    const savedView = window.sessionStorage?.getItem("ai_biseo_dashboard_view");
-    if (savedView && viewPanels.some((panel) => panel.dataset.view === savedView)) {
-      initialView = savedView;
-    }
-  } catch {
-    // ignore storage errors
+const setMobileNavOpen = (isOpen) => {
+  if (!document.body) {
+    return;
   }
 
-  setActiveView(initialView);
+  document.body.classList.toggle("nav-open", isOpen);
+  if (mobileNavToggle) {
+    mobileNavToggle.setAttribute("aria-expanded", isOpen ? "true" : "false");
+  }
+};
 
-  for (const button of viewNavButtons) {
-    button.addEventListener("click", () => {
-      const nextView = button.dataset.view;
-      if (!nextView) {
-        return;
+if (sideNavLinks.length > 0) {
+  setActiveNav(currentPage);
+}
+
+if (mobileNavToggle) {
+  mobileNavToggle.addEventListener("click", () => {
+    const isOpen = document.body?.classList.contains("nav-open") === true;
+    setMobileNavOpen(!isOpen);
+  });
+}
+
+if (mobileNavClose) {
+  mobileNavClose.addEventListener("click", () => {
+    setMobileNavOpen(false);
+  });
+}
+
+if (mobileNavBackdrop) {
+  mobileNavBackdrop.addEventListener("click", () => {
+    setMobileNavOpen(false);
+  });
+}
+
+if (sideNavLinks.length > 0) {
+  for (const link of sideNavLinks) {
+    link.addEventListener("click", () => {
+      if (window.matchMedia("(max-width: 900px)").matches) {
+        setMobileNavOpen(false);
       }
-      setActiveView(nextView);
     });
   }
 }
+
+window.addEventListener("keydown", (event) => {
+  if (event.key === "Escape") {
+    setMobileNavOpen(false);
+  }
+});
 
 if (document?.body) {
   requestAnimationFrame(() => {
@@ -892,15 +917,29 @@ if (settingsForm) {
   });
 }
 
-setInterval(() => {
+const hasOverviewWidgets = Boolean(healthText || moduleList);
+if (hasOverviewWidgets) {
   void refreshHealth();
   void renderModules();
-}, 15000);
+  setInterval(() => {
+    void refreshHealth();
+    void renderModules();
+  }, 15000);
+}
 
-const initialChatId = byId("chatId")?.value || "web:test-user";
-void refreshHealth();
-void renderModules();
-void loadSettings();
-void loadAssistantHistory(initialChatId);
-void loadErrorDiagnostics();
-void loadBlogRuns();
+if (settingsForm || settingsResult) {
+  void loadSettings();
+}
+
+if (assistantHistory) {
+  const initialChatId = byId("chatId")?.value?.trim() || "web:test-user";
+  void loadAssistantHistory(initialChatId);
+}
+
+if (diagnosticResult) {
+  void loadErrorDiagnostics();
+}
+
+if (blogRunList || blogRunDetail || blogTriggerResult) {
+  void loadBlogRuns();
+}

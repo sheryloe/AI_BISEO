@@ -3,13 +3,13 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Overview</title>
+  <title>Settings</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;700&family=JetBrains+Mono:wght@400;500&family=Sora:wght@500;700;800&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="/dashboard/styles.css" />
 </head>
-<body data-page="overview">
+<body data-page="settings">
   <button id="mobileNavToggle" class="mobile-nav-toggle" type="button" aria-label="메뉴 열기" aria-controls="sidebarNav" aria-expanded="false">
     <span></span>
     <span></span>
@@ -50,7 +50,7 @@
       <header class="topbar card">
         <div class="topbar-title">
           <p class="eyebrow">Live Runtime</p>
-          <h2>Overview</h2>
+          <h2>Settings</h2>
         </div>
         <div class="status-grid">
           <article class="status-chip" id="wsChip" data-state="connecting">
@@ -68,28 +68,43 @@
         </div>
       </header>
 
-      <section class="content-grid two-col">
-  <section id="overview" class="panel card">
-    <h2>Service Overview</h2>
-    <p class="section-help">서버 상태와 요청 수를 확인합니다.</p>
-    <div class="stats-grid">
-      <article>
-        <h3>Health</h3>
-        <p id="healthText">checking...</p>
-      </article>
-      <article>
-        <h3>Request Count</h3>
-        <p id="requestCount">0</p>
-      </article>
-    </div>
-  </section>
+      <section class="content-grid one-col">
+  <section id="settings" class="panel card">
+    <h2>Main Settings</h2>
+    <p class="section-help">민감값 저장 후 입력란은 자동으로 비워집니다.</p>
 
-  <section id="modules" class="panel card">
-    <div class="section-head">
-      <h2>Module Status</h2>
-      <button id="refreshModules" type="button">Refresh</button>
-    </div>
-    <div id="moduleList" class="module-list">loading...</div>
+    <form id="settingsForm" class="settings-form">
+      <label>
+        Telegram Bot Token
+        <input type="password" id="telegramBotTokenInput" placeholder="TELEGRAM_BOT_TOKEN" />
+      </label>
+      <label>
+        Telegram Allowed Chat IDs
+        <input type="text" id="telegramAllowedChatIdsInput" placeholder="TELEGRAM_ALLOWED_CHAT_IDS (comma-separated)" />
+      </label>
+      <label>
+        OpenAI API Key
+        <input type="password" id="openAiApiKeyInput" placeholder="OPENAI_API_KEY" />
+      </label>
+      <label>
+        Google AI Studio API Key
+        <input type="password" id="googleAiStudioApiKeyInput" placeholder="GOOGLE_AI_STUDIO_API_KEY" />
+      </label>
+      <label>
+        Notion API Key
+        <input type="password" id="notionApiKeyInput" placeholder="NOTION_API_KEY" />
+      </label>
+      <label>
+        Notion Parent Page ID
+        <input type="password" id="notionParentPageIdInput" placeholder="NOTION_PARENT_PAGE_ID" />
+      </label>
+      <label>
+        n8n Callback Secret
+        <input type="password" id="n8nBlogCallbackSecretInput" placeholder="N8N_BLOG_CALLBACK_SECRET" />
+      </label>
+      <button id="settingsSubmitBtn" type="submit">Save Settings</button>
+      <p id="settingsResult">대기 중</p>
+    </form>
   </section>
 </section>
     </main>
