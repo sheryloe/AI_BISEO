@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>AI_BISEO | AI 비서와 블로그 자동화를 함께 운영하는 Node.js 대시보드</title>
+  <meta name="description" content="AI 비서 응답, n8n 연동, Notion 로그, 블로그 자동화 흐름을 한 서비스로 묶은 운영형 프로젝트입니다.">
+  <meta name="keywords" content="AI assistant dashboard, blog automation nodejs, notion automation server, AI 비서 대시보드, 블로그 자동화 프로젝트">
+  <meta name="robots" content="index,follow,max-image-preview:large">
+  <link rel="canonical" href="https://sheryloe.github.io/AI_BISEO/">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="AI_BISEO">
+  <meta property="og:description" content="AI 비서 응답, n8n 연동, Notion 로그, 블로그 자동화 흐름을 한 서비스로 묶은 운영형 프로젝트입니다.">
+  <meta property="og:url" content="https://sheryloe.github.io/AI_BISEO/">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="AI_BISEO">
+  <meta name="twitter:description" content="AI 비서 응답, n8n 연동, Notion 로그, 블로그 자동화 흐름을 한 서비스로 묶은 운영형 프로젝트입니다.">
+  <meta name="theme-color" content="#2563eb">
+  <link rel="stylesheet" href="./styles.css">
+  <script type="application/ld+json">{"@context": "https://schema.org", "@graph": [{"@type": "SoftwareSourceCode", "name": "AI_BISEO", "codeRepository": "https://github.com/sheryloe/AI_BISEO", "description": "AI 비서 응답, n8n 연동, Notion 로그, 블로그 자동화 흐름을 한 서비스로 묶은 운영형 프로젝트입니다.", "programmingLanguage": "Node.js 20+", "url": "https://sheryloe.github.io/AI_BISEO/", "keywords": "AI assistant dashboard, blog automation nodejs, notion automation server, AI 비서 대시보드, 블로그 자동화 프로젝트"}, {"@type": "FAQPage", "mainEntity": [{"@type": "Question", "name": "AI_BISEO는 어떤 프로젝트인가요?", "acceptedAnswer": {"@type": "Answer", "text": "AI 비서 기능과 블로그 자동화를 같은 운영 대시보드에서 처리하기 위한 Node.js 서비스입니다."}}, {"@type": "Question", "name": "어떤 자동화를 포함하나요?", "acceptedAnswer": {"@type": "Answer", "text": "n8n 패치 스크립트, Notion 푸시, 운영 상태 체크와 같은 업무 자동화가 포함됩니다."}}, {"@type": "Question", "name": "Docker 없이도 실행할 수 있나요?", "acceptedAnswer": {"@type": "Answer", "text": "가능합니다. `npm install` 후 `npm run dev`로 로컬 개발 모드 실행이 가능합니다."}}]}]}</script>
+</head>
+<body>
+  <main class="shell">
+    <section class="hero">
+      <span class="eyebrow">Project Landing Page</span>
+      <div>
+        <h1>AI_BISEO</h1>
+        <p class="lead">AI 비서 응답, n8n 연동, Notion 로그, 블로그 자동화 흐름을 한 서비스로 묶은 운영형 프로젝트입니다.</p>
+      </div>
+      <div class="cta-row">
+        <a class="primary" href="https://github.com/sheryloe/AI_BISEO">GitHub Repository</a>
+        <a href="https://sheryloe.github.io/">Project Hub</a>
+      </div>
+      <div class="meta-row">
+        <span class="meta-chip">AI 비서와 블로그 자동화를 함께 운영하는 Node.js 대시보드</span>
+        <span class="meta-chip">개인 AI 비서, 블로그 자동화, Notion 기반 운영 로그, Node.js 백엔드 대시보드를 함께 굴리고 싶은 사용자</span>
+      </div>
+      <div class="chip-row"><span class="chip">AI assistant dashboard</span><span class="chip">blog automation nodejs</span><span class="chip">notion automation server</span><span class="chip">AI 비서 대시보드</span><span class="chip">블로그 자동화 프로젝트</span></div>
+    </section>
+    <section class="section">
+      <h2>Why This Project Exists</h2>
+      <p>개인용 AI 비서와 블로그 운영 자동화를 따로 관리하면 프롬프트, 실행 이력, 상태 확인, API 키 관리가 분산됩니다.</p>
+      <div class="cards"><article class="card"><h3>Feature</h3><p>Express 기반 메인 서버와 Socket.IO 중심 운영 흐름</p></article><article class="card"><h3>Feature</h3><p>OpenAI, Notion, Telegram, n8n 연계를 고려한 자동화 스크립트 포함</p></article><article class="card"><h3>Feature</h3><p>SQLite 저장소와 `storage/`, `prompt_log/` 기반 이력 관리</p></article><article class="card"><h3>Feature</h3><p>Docker Compose와 로컬 개발 스크립트 둘 다 제공</p></article></div>
+    </section>
+    <section class="section split">
+      <div class="stack">
+        <div>
+          <h2>Workflow</h2>
+          <ul class="clean"><li>API 키와 환경 변수 설정</li><li>로컬 개발 또는 Docker Compose로 서버 기동</li><li>대시보드에서 AI 비서 상태와 블로그 자동화 흐름 점검</li></ul>
+        </div>
+        <div>
+          <h2>Tech Stack</h2>
+          <ul class="clean"><li>Node.js 20+</li><li>TypeScript</li><li>Express</li><li>Socket.IO</li><li>SQLite</li><li>Docker Compose</li></ul>
+        </div>
+      </div>
+      <div class="flow">
+        <div>
+          <h2>Quick Start</h2>
+          <pre>`.env.example`을 기준으로 환경 변수를 준비합니다.
+`npm install` 후 `npm run dev`로 로컬 개발 서버를 실행합니다.
+또는 `npm run docker:up`으로 컨테이너 기반 실행을 시작합니다.</pre>
+        </div>
+      </div>
+    </section>
+    <section class="section">
+      <h2>Repository Structure</h2>
+      <ul class="clean"><li>`src/`: 서버 엔트리와 핵심 로직</li><li>`scripts/`: 운영 자동화 및 연동 스크립트</li><li>`dashboard/`, `docs/`: 운영 화면과 문서</li></ul>
+    </section>
+    <section class="section">
+      <h2>FAQ</h2>
+      <div class="cards"><article class="faq-item"><h3>AI_BISEO는 어떤 프로젝트인가요?</h3><p>AI 비서 기능과 블로그 자동화를 같은 운영 대시보드에서 처리하기 위한 Node.js 서비스입니다.</p></article><article class="faq-item"><h3>어떤 자동화를 포함하나요?</h3><p>n8n 패치 스크립트, Notion 푸시, 운영 상태 체크와 같은 업무 자동화가 포함됩니다.</p></article><article class="faq-item"><h3>Docker 없이도 실행할 수 있나요?</h3><p>가능합니다. `npm install` 후 `npm run dev`로 로컬 개발 모드 실행이 가능합니다.</p></article></div>
+    </section>
+    <p class="footer">Last updated: 2026-03-12 · Owner: sheryloe</p>
+  </main>
+</body>
+</html>
