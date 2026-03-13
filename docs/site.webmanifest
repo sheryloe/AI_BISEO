@@ -1,0 +1,11 @@
+{
+  "name": "AI_BISEO",
+  "short_name": "AI_BISEO",
+  "description": "AI 비서 운영 루프와 블로그 자동화를 묶은 Node.js 프로젝트",
+  "lang": "ko-KR",
+  "start_url": "https://sheryloe.github.io/AI_BISEO/",
+  "scope": "https://sheryloe.github.io/AI_BISEO/",
+  "display": "standalone",
+  "background_color": "#f4eddc",
+  "theme_color": "#1351c8"
+}
