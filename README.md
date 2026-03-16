@@ -1,29 +1,25 @@
-﻿# AI_BISEO
+# AI_BISEO
 
-AI 비서 응답, n8n 연동, Notion 로그, 블로그 자동화 흐름을 한 서비스로 묶은 운영형 프로젝트입니다.
+AI 비서 응답, Notion 운영 로그, n8n 연동, 블로그 자동화 흐름을 하나의 운영 루프로 묶은 Node.js 서비스 프로젝트입니다.
 
-- Repository: https://github.com/sheryloe/AI_BISEO
-- Live page: https://sheryloe.github.io/AI_BISEO/
-- Audience: 개인 AI 비서, 블로그 자동화, Notion 기반 운영 로그, Node.js 백엔드 대시보드를 함께 굴리고 싶은 사용자
+- 저장소: `https://github.com/sheryloe/AI_BISEO`
+- GitHub Pages: `https://sheryloe.github.io/AI_BISEO/`
 
-## Overview
-AI 비서와 블로그 자동화를 함께 운영하는 Node.js 대시보드
+## 서비스 개요
 
-## Why This Exists
-개인용 AI 비서와 블로그 운영 자동화를 따로 관리하면 프롬프트, 실행 이력, 상태 확인, API 키 관리가 분산됩니다.
+- 개인용 AI 비서와 블로그 자동화를 같은 콘솔에서 운영합니다.
+- 실행 로그, 프롬프트 기록, 연동 상태를 한 저장소 안에서 함께 관리합니다.
+- 운영형 대시보드와 자동화 스크립트가 같이 있는 구조를 지향합니다.
 
-## What You Can Do
-- Express 기반 메인 서버와 Socket.IO 중심 운영 흐름
-- OpenAI, Notion, Telegram, n8n 연계를 고려한 자동화 스크립트 포함
-- SQLite 저장소와 `storage/`, `prompt_log/` 기반 이력 관리
-- Docker Compose와 로컬 개발 스크립트 둘 다 제공
+## 핵심 기능
 
-## Typical Flow
-- API 키와 환경 변수 설정
-- 로컬 개발 또는 Docker Compose로 서버 기동
-- 대시보드에서 AI 비서 상태와 블로그 자동화 흐름 점검
+- Express 기반 서버와 운영 대시보드
+- Prompt log 및 Notion 로그 연동
+- n8n/Telegram/OpenAI 연계를 고려한 자동화 스크립트
+- Docker Compose와 로컬 실행 흐름 동시 제공
 
-## Tech Stack
+## 기술 스택
+
 - Node.js 20+
 - TypeScript
 - Express
@@ -31,26 +27,28 @@ AI 비서와 블로그 자동화를 함께 운영하는 Node.js 대시보드
 - SQLite
 - Docker Compose
 
-## Quick Start
-- `.env.example`을 기준으로 환경 변수를 준비합니다.
-- `npm install` 후 `npm run dev`로 로컬 개발 서버를 실행합니다.
-- 또는 `npm run docker:up`으로 컨테이너 기반 실행을 시작합니다.
+## 실행 방법
 
-## Repository Structure
+```bash
+npm install
+npm run dev
+```
+
+컨테이너 기준으로 띄우려면 아래 명령을 사용합니다.
+
+```bash
+npm run docker:up
+```
+
+## 디렉터리
+
 - `src/`: 서버 엔트리와 핵심 로직
-- `scripts/`: 운영 자동화 및 연동 스크립트
-- `dashboard/`, `docs/`: 운영 화면과 문서
+- `scripts/`: 운영 자동화 스크립트
+- `dashboard/`, `docs/`: 대시보드와 공개 문서
+- `prompt_log/`: 프롬프트 실행 기록
 
-## Search Keywords
-`AI assistant dashboard`, `blog automation nodejs`, `notion automation server`, `AI 비서 대시보드`, `블로그 자동화 프로젝트`
+## 다음 단계
 
-## FAQ
-### AI_BISEO는 어떤 프로젝트인가요?
-AI 비서 기능과 블로그 자동화를 같은 운영 대시보드에서 처리하기 위한 Node.js 서비스입니다.
-
-### 어떤 자동화를 포함하나요?
-n8n 패치 스크립트, Notion 푸시, 운영 상태 체크와 같은 업무 자동화가 포함됩니다.
-
-### Docker 없이도 실행할 수 있나요?
-가능합니다. `npm install` 후 `npm run dev`로 로컬 개발 모드 실행이 가능합니다.
-
+- 운영용 권한 분리와 비밀키 관리 강화
+- 프롬프트 버전 비교와 실패 재시도 흐름 추가
+- AI 비서와 블로그 자동화의 역할 분리

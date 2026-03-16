@@ -1,270 +1,189 @@
-<!doctype html>
-<html lang="ko">
-  <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>AI_BISEO | AI 비서 운영 루프와 블로그 자동화를 묶은 Node.js 프로젝트</title>
-    <meta
-      name="description"
-      content="AI 비서 응답, Notion 운영 로그, n8n 자동화, 블로그 파이프라인을 하나의 운영 루프로 묶은 Node.js 프로젝트입니다."
-    >
-    <meta
-      name="keywords"
-      content="AI assistant dashboard, blog automation nodejs, notion automation server, AI 비서 운영 대시보드, 블로그 자동화 프로젝트"
-    >
-    <meta name="robots" content="index, follow, max-image-preview:large">
-    <meta name="googlebot" content="index, follow, max-image-preview:large">
-    <meta name="theme-color" content="#1351c8">
-    <meta property="og:type" content="website">
-    <meta property="og:locale" content="ko_KR">
-    <meta property="og:site_name" content="AI_BISEO">
-    <meta property="og:title" content="AI_BISEO | AI 비서 운영 루프와 블로그 자동화를 묶은 Node.js 프로젝트">
-    <meta
-      property="og:description"
-      content="AI 비서, 블로그 자동화, 운영 메모를 따로 떼지 않고 같은 콘솔과 같은 문서 흐름으로 정리한 저장소입니다."
-    >
-    <meta property="og:url" content="https://sheryloe.github.io/AI_BISEO/">
-    <meta
-      property="og:image"
-      content="https://sheryloe.github.io/AI_BISEO/assets/screenshots/ai-biseo-cover.png"
-    >
-    <meta property="og:image:alt" content="AI_BISEO 블로그형 소개 페이지 커버">
-    <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:title" content="AI_BISEO">
-    <meta
-      name="twitter:description"
-      content="AI 비서 운영과 블로그 자동화를 하나의 Node.js 루프로 묶은 프로젝트"
-    >
-    <meta
-      name="twitter:image"
-      content="https://sheryloe.github.io/AI_BISEO/assets/screenshots/ai-biseo-cover.png"
-    >
-    <link rel="canonical" href="https://sheryloe.github.io/AI_BISEO/">
-    <link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
-    <link rel="manifest" href="site.webmanifest">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link
-      href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;800&family=Outfit:wght@500;600;700;800&display=swap"
-      rel="stylesheet"
-    >
-    <link rel="stylesheet" href="./styles.css">
-    <script type="application/ld+json">
-      {
-        "@context": "https://schema.org",
-        "@graph": [
-          {
-            "@type": "SoftwareSourceCode",
-            "name": "AI_BISEO",
-            "codeRepository": "https://github.com/sheryloe/AI_BISEO",
-            "url": "https://sheryloe.github.io/AI_BISEO/",
-            "programmingLanguage": "Node.js, TypeScript, Express",
-            "description": "AI 비서 응답, Notion 운영 로그, n8n 자동화, 블로그 파이프라인을 하나의 운영 루프로 묶은 Node.js 프로젝트입니다.",
-            "keywords": "AI assistant dashboard, blog automation nodejs, notion automation server, AI 비서 운영 대시보드, 블로그 자동화 프로젝트"
-          },
-          {
-            "@type": "FAQPage",
-            "mainEntity": [
-              {
-                "@type": "Question",
-                "name": "AI_BISEO는 어떤 프로젝트인가요?",
-                "acceptedAnswer": {
-                  "@type": "Answer",
-                  "text": "AI 비서 응답과 블로그 자동화 파이프라인을 같은 운영 콘솔에서 관리하기 위해 만든 Node.js 기반 프로젝트입니다."
-                }
-              },
-              {
-                "@type": "Question",
-                "name": "어떤 자동화 흐름을 포함하나요?",
-                "acceptedAnswer": {
-                  "@type": "Answer",
-                  "text": "n8n 연동, Notion 운영 로그, 상태 점검 스크립트, 블로그 자동화 파이프라인이 포함됩니다."
-                }
-              },
-              {
-                "@type": "Question",
-                "name": "Docker 없이도 실행할 수 있나요?",
-                "acceptedAnswer": {
-                  "@type": "Answer",
-                  "text": "가능합니다. npm install 후 npm run dev로 로컬 개발 서버를 실행할 수 있습니다."
-                }
-              }
-            ]
-          }
-        ]
-      }
-    </script>
-  </head>
-  <body>
-    <div class="page-shell">
-      <header class="topbar">
-        <a class="brand" href="#top">
-          <span class="brand-mark">AB</span>
-          <span class="brand-text">
-            <strong>AI_BISEO</strong>
-            <span>AI assistant + blog automation ops</span>
-          </span>
-        </a>
-        <nav class="topnav" aria-label="페이지 이동">
-          <a href="#features">특징</a>
-          <a href="#workflow">구성</a>
-          <a href="#visuals">캡처</a>
-          <a href="#faq">FAQ</a>
-          <a href="https://github.com/sheryloe/AI_BISEO">GitHub</a>
-        </nav>
-      </header>
-
-      <main id="top">
-        <section class="hero">
-          <div class="hero-copy">
-            <p class="eyebrow">Project story page</p>
-            <h1>AI 비서 운영과 블로그 자동화를<br>같은 루프로 묶은<br>Node.js 프로젝트</h1>
-            <p class="hero-body">
-              AI_BISEO는 AI 비서 응답, 운영 메모, n8n 자동화, 블로그 파이프라인을 흩어놓지 않고
-              하나의 콘솔과 하나의 기록 흐름으로 정리하기 위해 만든 저장소입니다. 기능 목록만 나열하는 대신,
-              왜 Docker 중심 운영 구조를 먼저 고정했고 이후 어떤 식으로 Ops Console과 공통 관리 레이어를 확장했는지
-              블로그 글처럼 읽히는 순서로 담았습니다.
-            </p>
-            <div class="hero-actions">
-              <a class="button primary" href="https://github.com/sheryloe/AI_BISEO">GitHub 저장소 보기</a>
-              <a class="button secondary" href="https://sheryloe.github.io/">프로젝트 허브로 이동</a>
-            </div>
-            <ul class="hero-meta">
-              <li>개인 AI 비서 운영 루프</li>
-              <li>Notion 로그 + n8n 연동</li>
-              <li>블로그 자동화 파이프라인</li>
-            </ul>
-          </div>
-
-          <div class="hero-visual" aria-label="AI_BISEO 실행 화면">
-            <figure class="visual-card visual-main">
-              <img src="assets/screenshots/ai-biseo-overview.png" alt="AI_BISEO 운영 화면 개요" loading="eager">
-            </figure>
-            <figure class="visual-card visual-side">
-              <img src="assets/screenshots/ai-biseo-pipeline.png" alt="AI_BISEO 파이프라인 화면" loading="lazy">
-            </figure>
-            <div class="visual-caption">
-              <strong>운영 화면과 자동화 흐름을 같은 맥락에서</strong>
-              <p>응답 기록, 자동화 상태, 운영 메모를 따로 보지 않고 하나의 화면 언어 안에서 연결하는 구조를 목표로 했습니다.</p>
-            </div>
-          </div>
-        </section>
-
-        <section class="feature-strip" id="features">
-          <article>
-            <span>01</span>
-            <h2>기능보다 운영 루프를 먼저 설계</h2>
-            <p>AI 비서와 블로그 자동화를 따로 관리하면 상태 확인과 로그 추적이 분리됩니다. 이 저장소는 그 분산을 줄이는 데 초점을 둡니다.</p>
-          </article>
-          <article>
-            <span>02</span>
-            <h2>Ops Console 중심의 관리 경험</h2>
-            <p>응답 흐름, 자동화 실행 상태, 운영 메모를 같은 콘솔 안에서 읽을 수 있게 정리해 운영 피로를 낮췄습니다.</p>
-          </article>
-          <article>
-            <span>03</span>
-            <h2>문서와 실행 화면을 함께 공개</h2>
-            <p>`docs/`와 Notion 기반 스토리 문서를 같이 두어 검색 유입 사용자가 구조를 빠르게 이해할 수 있게 만들었습니다.</p>
-          </article>
-        </section>
-
-        <section class="workflow" id="workflow">
-          <div class="section-heading">
-            <p class="eyebrow">Chapters</p>
-            <h2>이 저장소를 읽는 가장 빠른 순서</h2>
-            <p class="section-body">
-              기능 소개보다 의사결정 순서가 먼저 보이도록, Notion 문서의 3단계 구조를 기준으로 프로젝트 흐름을 다시 정리했습니다.
-            </p>
-          </div>
-          <div class="workflow-grid">
-            <article class="workflow-card">
-              <strong>1. Docker 중심 운영 아키텍처를 먼저 고정한 이유</strong>
-              <p>실행 환경을 먼저 안정화해 AI 응답과 자동화 스크립트가 같은 기준 위에서 돌도록 만들었습니다.</p>
-            </article>
-            <article class="workflow-card">
-              <strong>2. Express와 Ops Console로 운영 루프를 만든 과정</strong>
-              <p>상태 확인, 응답 기록, 운영 메모를 하나의 흐름으로 이어 주는 관리 화면을 중심에 뒀습니다.</p>
-            </article>
-            <article class="workflow-card">
-              <strong>3. 공통 관리 레이어와 블로그 자동화 확장</strong>
-              <p>운영 레이어를 먼저 세우고 그 위에 블로그 자동화 파이프라인을 확장해 재사용성을 높였습니다.</p>
-            </article>
-          </div>
-        </section>
-
-        <section class="screenshots" id="visuals">
-          <div class="section-heading">
-            <p class="eyebrow">Runtime capture</p>
-            <h2>문서보다 먼저 이해되는 실제 화면</h2>
-            <p class="section-body">
-              검색이나 링크로 처음 들어온 사람도 프로젝트의 성격을 바로 파악할 수 있도록 실행 화면을 함께 배치했습니다.
-            </p>
-          </div>
-          <div class="screen-grid">
-            <figure class="screen-card wide">
-              <img src="assets/screenshots/ai-biseo-overview.png" alt="AI_BISEO 운영 화면 개요" loading="lazy">
-              <figcaption>
-                <strong>운영 개요 화면</strong>
-                <span>AI 비서 응답과 운영 상태가 함께 정리된 메인 화면입니다.</span>
-              </figcaption>
-            </figure>
-            <figure class="screen-card tall">
-              <img src="assets/screenshots/ai-biseo-assistant.png" alt="AI_BISEO 비서 응답 화면" loading="lazy">
-              <figcaption>
-                <strong>비서 응답과 메모 흐름</strong>
-                <span>응답 결과와 운영 메모가 어떻게 이어지는지 보여 주는 장면입니다.</span>
-              </figcaption>
-            </figure>
-          </div>
-        </section>
-
-        <section class="seo-copy">
-          <div class="section-heading">
-            <p class="eyebrow">Search intent</p>
-            <h2>검색 유입 사용자가 바로 이해하도록 만든 문장 구조</h2>
-          </div>
-          <div class="seo-grid">
-            <article>
-              <h3>국문 키워드</h3>
-              <p>AI 비서 운영 대시보드, 블로그 자동화 프로젝트, Notion 운영 로그 같은 조합을 제목과 본문에 직접 반영했습니다.</p>
-            </article>
-            <article>
-              <h3>영문 키워드</h3>
-              <p>AI assistant dashboard, blog automation nodejs, notion automation server 같은 검색어도 함께 대응합니다.</p>
-            </article>
-            <article>
-              <h3>공유 미리보기</h3>
-              <p>Open Graph 이미지와 FAQ 구조화 데이터를 넣어 링크 공유 시 프로젝트 성격이 바로 보이도록 구성했습니다.</p>
-            </article>
-          </div>
-        </section>
-
-        <section class="faq" id="faq">
-          <div class="section-heading">
-            <p class="eyebrow">FAQ</p>
-            <h2>자주 묻는 질문</h2>
-          </div>
-          <div class="faq-list">
-            <details open>
-              <summary>AI_BISEO는 어떤 프로젝트인가요?</summary>
-              <p>AI 비서 응답과 블로그 자동화 파이프라인을 같은 운영 콘솔에서 관리하기 위해 만든 Node.js 기반 프로젝트입니다.</p>
-            </details>
-            <details>
-              <summary>어떤 자동화 흐름을 포함하나요?</summary>
-              <p>n8n 연동, Notion 운영 로그, 상태 점검 스크립트, 블로그 자동화 파이프라인이 포함됩니다.</p>
-            </details>
-            <details>
-              <summary>Docker 없이도 실행할 수 있나요?</summary>
-              <p>가능합니다. `npm install` 후 `npm run dev`로 로컬 개발 서버를 실행할 수 있습니다.</p>
-            </details>
-          </div>
-        </section>
-      </main>
-
-      <footer class="footer">
-        <span>Last updated: 2026-03-13</span>
-        <a href="https://github.com/sheryloe/AI_BISEO">Repository</a>
-      </footer>
+<!DOCTYPE html>
+<html lang="ko" data-theme="night">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>AI_BISEO | AI 비서 운영과 블로그 자동화를 묶는 서비스 루프</title>
+  <meta name="description" content="AI 비서, Notion 로그, n8n 연동, 블로그 자동화를 하나의 운영 루프로 묶는 Node.js 서비스 프로젝트">
+  <meta name="theme-color" content="#0b1220">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="AI_BISEO | AI 비서 운영과 블로그 자동화를 묶는 서비스 루프">
+  <meta property="og:description" content="개인 AI 비서와 블로그 자동화를 같은 콘솔에서 관리하는 운영형 프로젝트">
+  <meta property="og:url" content="https://sheryloe.github.io/AI_BISEO/">
+  <meta property="og:image" content="https://sheryloe.github.io/AI_BISEO/assets/screenshots/ai-biseo-cover.png">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600;700&family=Sora:wght@500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/daisyui@4.12.24/dist/full.min.css" rel="stylesheet" type="text/css">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <style>
+    body {
+      font-family: "IBM Plex Sans KR", sans-serif;
+      background:
+        radial-gradient(circle at top left, rgba(45, 212, 191, 0.16), transparent 24rem),
+        radial-gradient(circle at top right, rgba(59, 130, 246, 0.18), transparent 24rem),
+        linear-gradient(180deg, #06111f 0%, #08182b 48%, #0c1d35 100%);
+    }
+    .display-font { font-family: "Sora", sans-serif; }
+    .glass {
+      background: rgba(10, 21, 38, 0.72);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      box-shadow: 0 28px 60px rgba(0, 0, 0, 0.24);
+      backdrop-filter: blur(16px);
+    }
+    .gridline {
+      background-image:
+        linear-gradient(rgba(255,255,255,0.05) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,0.05) 1px, transparent 1px);
+      background-size: 28px 28px;
+    }
+  </style>
+</head>
+<body class="text-slate-100">
+  <header class="sticky top-0 z-50 border-b border-white/10 bg-slate-950/70 backdrop-blur">
+    <div class="mx-auto flex max-w-7xl items-center justify-between gap-4 px-6 py-4">
+      <a href="#top" class="flex items-center gap-3">
+        <div class="flex h-11 w-11 items-center justify-center rounded-2xl bg-cyan-400 text-slate-950 shadow-lg shadow-cyan-500/20">
+          <span class="display-font text-lg font-extrabold">AB</span>
+        </div>
+        <div>
+          <p class="display-font text-lg font-bold">AI_BISEO</p>
+          <p class="text-xs uppercase tracking-[0.24em] text-cyan-200/70">AI assistant ops loop</p>
+        </div>
+      </a>
+      <nav class="hidden gap-3 md:flex">
+        <a class="btn btn-ghost btn-sm text-slate-200" href="#service">서비스</a>
+        <a class="btn btn-ghost btn-sm text-slate-200" href="#workflow">루프</a>
+        <a class="btn btn-ghost btn-sm text-slate-200" href="#todo">TODO</a>
+        <a class="btn btn-primary btn-sm" href="https://github.com/sheryloe/AI_BISEO">GitHub</a>
+      </nav>
     </div>
-  </body>
+  </header>
+
+  <main id="top" class="mx-auto flex max-w-7xl flex-col gap-10 px-6 pb-24 pt-10">
+    <section class="grid items-center gap-6 lg:grid-cols-[1.08fr_0.92fr]">
+      <div class="glass gridline rounded-[2rem] p-8 lg:p-10">
+        <span class="badge badge-info badge-outline mb-5">Service-facing project</span>
+        <h1 class="display-font max-w-3xl text-4xl font-black leading-tight text-white md:text-6xl">
+          AI 비서 운영과
+          블로그 자동화를
+          하나의 서비스 루프로
+          묶습니다
+        </h1>
+        <p class="mt-6 max-w-2xl text-lg leading-8 text-slate-300">
+          AI_BISEO는 채팅 응답, Notion 운영 로그, n8n 연동, 블로그 작업을 따로 흩어두지 않고
+          운영 콘솔 하나에서 확인하려는 프로젝트입니다. 핵심은 “AI가 뭘 했는지”를 남기고,
+          “실패하면 어디서 막혔는지”를 바로 볼 수 있게 만드는 것입니다.
+        </p>
+        <div class="mt-7 flex flex-wrap gap-3">
+          <a class="btn btn-info" href="https://github.com/sheryloe/AI_BISEO">저장소 보기</a>
+          <a class="btn btn-outline text-slate-100" href="https://github.com/sheryloe/AI_BISEO/issues">이슈 정리</a>
+        </div>
+        <div class="mt-8 grid gap-3 sm:grid-cols-3">
+          <div class="rounded-2xl border border-cyan-300/20 bg-cyan-400/10 p-4">
+            <p class="text-xs uppercase tracking-[0.2em] text-cyan-200">Core</p>
+            <p class="mt-2 text-lg font-semibold text-white">AI 비서 + 블로그 자동화</p>
+          </div>
+          <div class="rounded-2xl border border-blue-300/20 bg-blue-400/10 p-4">
+            <p class="text-xs uppercase tracking-[0.2em] text-blue-200">Data</p>
+            <p class="mt-2 text-lg font-semibold text-white">Prompt log + Notion 기록</p>
+          </div>
+          <div class="rounded-2xl border border-emerald-300/20 bg-emerald-400/10 p-4">
+            <p class="text-xs uppercase tracking-[0.2em] text-emerald-200">Goal</p>
+            <p class="mt-2 text-lg font-semibold text-white">운영형 서비스 콘솔</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="grid gap-4">
+        <figure class="glass overflow-hidden rounded-[2rem]">
+          <img class="h-full w-full object-cover" src="assets/screenshots/ai-biseo-overview.png" alt="AI_BISEO overview screenshot">
+        </figure>
+        <div class="grid gap-4 sm:grid-cols-2">
+          <figure class="glass overflow-hidden rounded-[1.75rem]">
+            <img class="h-full w-full object-cover" src="assets/screenshots/ai-biseo-assistant.png" alt="AI assistant panel">
+          </figure>
+          <figure class="glass overflow-hidden rounded-[1.75rem]">
+            <img class="h-full w-full object-cover" src="assets/screenshots/ai-biseo-pipeline.png" alt="Automation pipeline panel">
+          </figure>
+        </div>
+      </div>
+    </section>
+
+    <section id="service" class="grid gap-5 lg:grid-cols-4">
+      <article class="glass rounded-[1.75rem] p-6">
+        <i data-lucide="bot" class="h-8 w-8 text-cyan-300"></i>
+        <h2 class="display-font mt-4 text-2xl font-bold text-white">Assistant</h2>
+        <p class="mt-3 text-slate-300">채팅 응답과 운영 보조 기능을 같은 맥락에서 관리합니다.</p>
+      </article>
+      <article class="glass rounded-[1.75rem] p-6">
+        <i data-lucide="notebook-tabs" class="h-8 w-8 text-blue-300"></i>
+        <h2 class="display-font mt-4 text-2xl font-bold text-white">Ops Log</h2>
+        <p class="mt-3 text-slate-300">Prompt log와 Notion 메모를 운영 증적처럼 쌓아 둡니다.</p>
+      </article>
+      <article class="glass rounded-[1.75rem] p-6">
+        <i data-lucide="workflow" class="h-8 w-8 text-emerald-300"></i>
+        <h2 class="display-font mt-4 text-2xl font-bold text-white">Pipeline</h2>
+        <p class="mt-3 text-slate-300">n8n, Telegram, 블로그 작업을 한 루프로 연결합니다.</p>
+      </article>
+      <article class="glass rounded-[1.75rem] p-6">
+        <i data-lucide="shield-check" class="h-8 w-8 text-violet-300"></i>
+        <h2 class="display-font mt-4 text-2xl font-bold text-white">Ops Ready</h2>
+        <p class="mt-3 text-slate-300">실패 추적, 환경 변수, Docker 흐름까지 같이 챙깁니다.</p>
+      </article>
+    </section>
+
+    <section id="workflow" class="glass rounded-[2rem] p-8 lg:p-10">
+      <div class="max-w-3xl">
+        <span class="badge badge-outline badge-info">Workflow</span>
+        <h2 class="display-font mt-4 text-3xl font-black text-white md:text-4xl">운영 루프는 네 단계로 정리됩니다</h2>
+        <p class="mt-4 text-lg leading-8 text-slate-300">
+          AI_BISEO가 잘 되려면 “잘 답변한다”보다 “운영자가 상태를 이해한다”가 더 중요합니다.
+          그래서 생성, 기록, 자동화, 모니터링이 끊기지 않게 이어지는 구조를 강조합니다.
+        </p>
+      </div>
+      <div class="mt-8 grid gap-4 lg:grid-cols-4">
+        <div class="rounded-2xl border border-white/10 bg-white/5 p-5">
+          <p class="text-sm font-semibold text-cyan-200">01 Generate</p>
+          <p class="mt-2 text-white">AI 비서 응답과 자동화 명령을 실행합니다.</p>
+        </div>
+        <div class="rounded-2xl border border-white/10 bg-white/5 p-5">
+          <p class="text-sm font-semibold text-blue-200">02 Record</p>
+          <p class="mt-2 text-white">Prompt log와 Notion 기록으로 작업 흔적을 남깁니다.</p>
+        </div>
+        <div class="rounded-2xl border border-white/10 bg-white/5 p-5">
+          <p class="text-sm font-semibold text-emerald-200">03 Automate</p>
+          <p class="mt-2 text-white">n8n, Telegram, 블로그 파이프라인을 연결합니다.</p>
+        </div>
+        <div class="rounded-2xl border border-white/10 bg-white/5 p-5">
+          <p class="text-sm font-semibold text-violet-200">04 Operate</p>
+          <p class="mt-2 text-white">실패 구간과 상태를 운영자가 바로 볼 수 있어야 합니다.</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="todo" class="grid gap-5 lg:grid-cols-3">
+      <article class="glass rounded-[1.75rem] p-6">
+        <span class="badge badge-warning">Security</span>
+        <h2 class="display-font mt-4 text-2xl font-bold text-white">권한과 자격증명 분리</h2>
+        <p class="mt-3 text-slate-300">운영용 API 키, 자동화용 토큰, 로컬 테스트 키를 분리하고 접근 범위를 줄여야 합니다.</p>
+      </article>
+      <article class="glass rounded-[1.75rem] p-6">
+        <span class="badge badge-success">Product</span>
+        <h2 class="display-font mt-4 text-2xl font-bold text-white">프롬프트 버전 관리</h2>
+        <p class="mt-3 text-slate-300">어떤 프롬프트 조합이 어떤 결과를 냈는지 비교할 수 있어야 서비스 개선 속도가 빨라집니다.</p>
+      </article>
+      <article class="glass rounded-[1.75rem] p-6">
+        <span class="badge badge-info">Ops</span>
+        <h2 class="display-font mt-4 text-2xl font-bold text-white">실패 재시도와 알림</h2>
+        <p class="mt-3 text-slate-300">자동화가 막혔을 때 즉시 알려주고, 재시도 기준을 명확히 두는 것이 다음 단계입니다.</p>
+      </article>
+    </section>
+  </main>
+
+  <script>lucide.createIcons();</script>
+</body>
 </html>
